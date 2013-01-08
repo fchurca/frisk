@@ -1,17 +1,9 @@
-(paises (
-(argentina . "Argentina")
-(uruguay . "Uruguay")
-(brazil . "Brazil")
-(paraguay . "Paraguay")
-(bolivia . "Bolivia")
-(chile . "Chile"))
-fronteras (
-(argentina . uruguay)
-(argentina . brazil)
-(argentina . paraguay)
-(argentina . bolivia)
-(argentina . chile)
-(uruguay . brazil)
-(brazil . paraguay)
-(paraguay . bolivia)
-(bolivia . chile)))
+(territories (
+(argentina ("Argentina" 1))
+(peru ("Peru" 3))
+(brazil ("Brazil" 2))
+(venezuela . ("Venezuela" 4)))
+frontiers (
+(argentina (brazil peru))
+(brazil (peru venezuela))
+(peru (venezuela))))

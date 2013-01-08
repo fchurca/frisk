@@ -1,34 +1,38 @@
-(defclass pais ()
-  ((nombre
-     :initarg :nombre
+; (ql:quickload "cl-graph")
+
+(defclass territory ()
+  ((name
+     :initarg :name
      :initform (error "Debe ingresar el nombre del país")
-     :reader nombre)
-   (duenio
-     :initform nil
-     :accessor duenio)
-   (ejercitos
-     :initform 0
-     :accessor ejercitos)
-   (fronteras
+     :reader name)
+   (extra-armies
+     :initarg :extra-armies
+     :initform (error "Debe ingresar la cantidad de ejércitos adicionales del país")
+     :reader extra-armies)
+   (frontiers
      :initform (make-hash-table)
-     :reader fronteras)))
+     :reader frontiers)
+   (owner
+     :initform nil
+     :accessor owner)
+   (armies
+     :initform 0
+     :accessor armies)))
 
 (defclass jugador ()
-  ((nombre
-     :initarg :nombre
+  ((name
+     :initarg :name
      :initform (error "Debe ingresar el nombre del jugador")
-     :reader nombre)
-   (paises
+     :reader name)
+   (territories
      :initform (make-hash-table)
-     :reader paises)))
+     :reader territories)))
 
-(defun read-map-from-file (file)
-  (let ((paises (make-hash-table)) 
-        (filecontents (read-from-file file)))
-    (dolist (pais (getf filecontents :paises))
-      (setf (gethash (car pais) paises)
-            (make-instance 'pais :nombre (cdr pais))))
-    paises))
-
-(let ((graph nil (loop for frontera in fronteras)) do (setf graph (adjoin frontera graph (setf graph (adjoin (cons (cdr)) frontera (car frontera graph graph)))))))
+(defun read-map (file)
+  (let ((territories (make-hash-table))
+        (filecontents (read file)))
+    (dolist (territory (getf filecontents 'territories))
+      (setf (gethash (car territory) territories)
+            (make-instance 'territory :name (second territory) :extra-armies (third territory))))
+    territories))
 
