@@ -1,9 +1,9 @@
-(territories (
-(argentina ("Argentina" 1))
-(peru ("Peru" 3))
-(brazil ("Brazil" 2))
-(venezuela . ("Venezuela" 4)))
-frontiers (
-(argentina (brazil peru))
-(brazil (peru venezuela))
-(peru (venezuela))))
+(:territories (
+(:argentina "Argentina" 1)
+(:peru "Peru" 3)
+(:brazil "Brazil" 2)
+(:venezuela "Venezuela" 4))
+:frontiers (
+(:argentina (:brazil :peru))
+(:brazil (:peru :venezuela))
+(:peru (:venezuela))))

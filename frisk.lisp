@@ -37,7 +37,7 @@
   (let ((*read-eval* nil)
         (territories (make-hash-table))
         (filecontents (read file)))
-    (dolist (territory (getf filecontents 'territories))
+    (dolist (territory (getf filecontents :territories))
       (setf (gethash (car territory) territories)
             (make-instance 'territory
                            :name (second territory)
