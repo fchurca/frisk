@@ -34,7 +34,8 @@
 (defgeneric read-map (file))
 
 (defmethod read-map ((file stream))
-  (let ((territories (make-hash-table))
+  (let ((*read-eval* nil)
+        (territories (make-hash-table))
         (filecontents (read file)))
     (dolist (territory (getf filecontents 'territories))
       (setf (gethash (car territory) territories)
