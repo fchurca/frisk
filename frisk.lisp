@@ -29,10 +29,7 @@
   ((name
      :initarg :name
      :initform (error "Debe ingresar el nombre del jugador")
-     :reader name)
-   (territories
-     :initform (make-hash-table)
-     :reader territories)))
+     :reader name)))
 
 (defgeneric read-map (file))
 
