@@ -1,6 +1,10 @@
 (defpackage :ar.com.fchurca.frisk
   (:use :common-lisp)
   (:export :territory
+           :name
+           :extra-armies
+           :owner
+           :armies
            :player
            :read-map
            :move-armies))
@@ -55,7 +59,10 @@
         (format nil "~a.map" path)))))
 
 (defun move-armies (origin destination amount)
-  (unless (> (armies origin) amount) (error "No hay suficientes ejércitos"))
+  (unless (> amount 0)
+    (error "No se pueden mover 0 o menos ejércitos"))
+  (unless (> (armies origin) amount)
+    (error "No hay suficientes ejércitos"))
   (decf (armies origin) amount)
   (incf (armies destination) amount))
 
