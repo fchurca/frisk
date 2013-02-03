@@ -1,22 +1,4 @@
-(defpackage :ar.com.fchurca.frisk
-  (:use :common-lisp)
-  (:export :territory
-           :name
-           :extra-armies
-           :owner
-           :armies
-           :player
-           :read-map
-           :move-armies
-           :place-armies
-           :attack
-           :game
-           :territories
-           :turn-player))
-
 (in-package :ar.com.fchurca.frisk)
-
-; (ql:quickload "cl-graph")
 
 (defclass territory ()
   ((name

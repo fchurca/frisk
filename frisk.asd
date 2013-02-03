@@ -6,4 +6,7 @@
   :license "BSD"
   :description "Implementation of a Risk-like board game"
   :long-description ""
-  :components ((:file "frisk")))
+  :components ((:file "package")
+               (:file "frisk" :depends-on ("package")))
+  :depends-on ("cl-graph"))
+
