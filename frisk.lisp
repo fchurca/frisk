@@ -1,4 +1,6 @@
 (in-package :ar.com.fchurca.frisk)
+(use-package :cl-graph)
+(use-package :cl-containers)
 
 (defclass territory ()
   ((name
@@ -28,13 +30,18 @@
    (territories
      :initarg :territories
      :accessor territories
-     :initform (error "Debe especificar los territorios"))))
+     :initform (error "Debe especificar los territorios"))
+   (frontiers
+     :initarg :frontiers
+     :accessor frontiers
+     :initform (error "Debe especificar las fronteras"))))
 
 (defgeneric read-map (file))
 
 (defmethod read-map ((file stream))
   (let ((*read-eval* nil)
         (territories (make-hash-table))
+        (frontiers (make-container 'graph-container))
         (filecontents (read file)))
     (dolist (territory (getf filecontents :territories))
       (destructuring-bind (key name extra-armies) territory
@@ -42,7 +49,7 @@
               (make-instance 'territory
                              :name name
                              :extra-armies extra-armies))))
-    (make-instance 'game :territories territories)))
+    (make-instance 'game :territories territories :frontiers frontiers)))
 
 (defmethod read-map ((path pathname))
   (with-open-file (file path) (read-map file)))

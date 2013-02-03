@@ -12,4 +12,5 @@
            :attack
            :game
            :territories
+           :frontiers
            :turn-player))
