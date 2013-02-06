@@ -44,11 +44,14 @@
         (frontiers (make-container 'graph-container))
         (filecontents (read file)))
     (dolist (territory (getf filecontents :territories))
-      (destructuring-bind (key name extra-armies) territory
+      (destructuring-bind (key name extra-armies terr-frontiers) territory
+        (add-vertex frontiers key)
         (setf (gethash key territories)
               (make-instance 'territory
                              :name name
-                             :extra-armies extra-armies))))
+                             :extra-armies extra-armies))
+        (dolist (frontierkey terr-frontiers)
+          (add-edge-between-vertexes frontiers key frontierkey))))
     (make-instance 'game :territories territories :frontiers frontiers)))
 
 (defmethod read-map ((path pathname))
@@ -63,10 +66,18 @@
 
 (defun territory (game territory-key)
   (gethash territory-key (territories game)))
- 
+
+(defun territories-connected-p (game origin-key destination-key)
+  (let ((graph (frontiers game)))
+    (vertices-share-edge-p
+      (find-vertex graph origin-key)
+      (find-vertex graph destination-key))))
+
 (defun move-armies (game origin-key destination-key amount)
   (let ((origin (territory game origin-key))
         (destination (territory game destination-key)))
+    (unless (territories-connected-p game origin-key destination-key)
+      (error "Los territorios deben estar conectados"))
     (unless (eq (owner origin) (owner destination))
       (error "Los territorios tienen que tener el mismo dueno"))
     (unless (eq (owner origin) (turn-player game))
@@ -92,6 +103,8 @@
      (destination (territory game destination-key))
      (attackers (armies origin))
      (defenders (armies destination)))
+    (unless (territories-connected-p game origin-key destination-key)
+      (error "Los territorios deben estar conectados"))
     (unless (> attackers 2)
       (error "No se puede atacar teniendo 2 o menos ejércitos"))
     (unless (eq (owner origin) (turn-player game))
@@ -99,8 +112,8 @@
     (when (equal (owner destination) (owner origin))
       (error "Un jugador no se puede atacar a si mismo"))
     (let ((decrement (min defenders (- attackers 2))))
-      (decf attackers decrement)
-      (decf defenders decrement)
+      (decf attackers (random decrement))
+      (decf defenders (random decrement))
       (when (= defenders 0)
         (setf (owner destination) (owner origin))
         (move-armies game origin-key destination-key 1)))

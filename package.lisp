@@ -13,4 +13,5 @@
            :game
            :territories
            :frontiers
-           :turn-player))
+           :turn-player
+           :territories-connected-p))
