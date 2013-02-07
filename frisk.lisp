@@ -1,6 +1,4 @@
 (in-package :ar.com.fchurca.frisk)
-(use-package :cl-graph)
-(use-package :cl-containers)
 
 (defclass territory ()
   ((name

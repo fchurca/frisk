@@ -1,5 +1,5 @@
 (defpackage :ar.com.fchurca.frisk
-  (:use :common-lisp)
+  (:use :common-lisp :cl-graph :cl-containers)
   (:export :territory
            :name
            :extra-armies
