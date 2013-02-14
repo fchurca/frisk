@@ -8,5 +8,5 @@
   :long-description ""
   :components ((:file "package")
                (:file "frisk" :depends-on ("package")))
-  :depends-on ("cl-graph"))
+  :depends-on (:cl-graph :metatilities-base))
 

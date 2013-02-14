@@ -1,38 +1,20 @@
 (in-package :ar.com.fchurca.frisk)
 
-(defclass territory ()
-  ((name
-     :initarg :name
-     :initform (error "Debe ingresar el nombre del territorio")
-     :reader name)
+(defclass* territory ()
+  ((name (error "Debe ingresar el nombre del territorio") ir)
    (extra-armies
-     :initarg :extra-armies
-     :initform (error "Debe ingresar la cantidad de ejércitos adicionales del territorio")
-     :reader extra-armies)
-   (owner
-     :initform nil
-     :accessor owner)
-   (armies
-     :initform 0
-     :accessor armies)))
+     (error "Debe ingresar la cantidad de ejércitos adicionales del territorio")
+     ir)
+   (owner nil a)
+   (armies 0 a)))
 
-(defclass player ()
-  ((name
-     :initarg :name
-     :initform (error "Debe ingresar el nombre del jugador")
-     :reader name)))
+(defclass* player ()
+  ((name (error "Debe ingresar el nombre del jugador") ir)))
 
-(defclass game ()
-  ((turn-player
-     :accessor turn-player)
-   (territories
-     :initarg :territories
-     :accessor territories
-     :initform (error "Debe especificar los territorios"))
-   (frontiers
-     :initarg :frontiers
-     :accessor frontiers
-     :initform (error "Debe especificar las fronteras"))))
+(defclass* game ()
+  ((turn-player nil a)
+   (territories (error "Debe especificar los territorios") ir)
+   (frontiers (error "Debe especificar las fronteras") ir)))
 
 (defgeneric read-map (file))
 
@@ -65,6 +47,9 @@
 (defun territory (game territory-key)
   (gethash territory-key (territories game)))
 
+(defun territory-keys (game)
+  (loop for k being the hash-keys in (territories game) collecting k))
+
 (defun territories-connected-p (game origin-key destination-key)
   (let ((graph (frontiers game)))
     (vertices-share-edge-p
@@ -77,7 +62,7 @@
     (unless (territories-connected-p game origin-key destination-key)
       (error "Los territorios deben estar conectados"))
     (unless (eq (owner origin) (owner destination))
-      (error "Los territorios tienen que tener el mismo dueno"))
+      (error "Los territorios tienen que tener el mismo dueño"))
     (unless (eq (owner origin) (turn-player game))
       (error "El jugador de turno no controla esos territorios"))
     (unless (> amount 0)
@@ -108,7 +93,7 @@
     (unless (eq (owner origin) (turn-player game))
       (error "El jugador de turno no controla esos territorios"))
     (when (equal (owner destination) (owner origin))
-      (error "Un jugador no se puede atacar a si mismo"))
+      (error "Un jugador no se puede atacar a sí mismo"))
     (let ((decrement (min defenders (- attackers 2))))
       (decf attackers (random decrement))
       (decf defenders (random decrement))
