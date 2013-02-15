@@ -16,33 +16,32 @@
    (territories (error "Debe especificar los territorios") ir)
    (frontiers (error "Debe especificar las fronteras") ir)))
 
-(defgeneric read-map (file))
+(defgeneric read-map (file)
+  (:method ((file stream))
+   (let ((*read-eval* nil)
+         (territories (make-hash-table))
+         (frontiers (make-container 'graph-container))
+         (filecontents (read file)))
+     (dolist (territory (getf filecontents :territories))
+       (destructuring-bind (key name extra-armies terr-frontiers) territory
+         (add-vertex frontiers key)
+         (setf (gethash key territories)
+               (make-instance 'territory
+                              :name name
+                              :extra-armies extra-armies))
+         (dolist (frontierkey terr-frontiers)
+           (add-edge-between-vertexes frontiers key frontierkey))))
+     (make-instance 'game :territories territories :frontiers frontiers))) 
 
-(defmethod read-map ((file stream))
-  (let ((*read-eval* nil)
-        (territories (make-hash-table))
-        (frontiers (make-container 'graph-container))
-        (filecontents (read file)))
-    (dolist (territory (getf filecontents :territories))
-      (destructuring-bind (key name extra-armies terr-frontiers) territory
-        (add-vertex frontiers key)
-        (setf (gethash key territories)
-              (make-instance 'territory
-                             :name name
-                             :extra-armies extra-armies))
-        (dolist (frontierkey terr-frontiers)
-          (add-edge-between-vertexes frontiers key frontierkey))))
-    (make-instance 'game :territories territories :frontiers frontiers)))
+  (:method ((path pathname))
+   (with-open-file (file path) (read-map file))) 
 
-(defmethod read-map ((path pathname))
-  (with-open-file (file path) (read-map file)))
-
-(defmethod read-map ((path string))
-  (read-map
-    (parse-namestring
-      (if (probe-file path)
-        path
-        (format nil "~a.map" path)))))
+  (:method ((path string))
+   (read-map
+     (parse-namestring
+       (if (probe-file path)
+         path
+         (format nil "~a.map" path)))))) 
 
 (defun territory (game territory-key)
   (gethash territory-key (territories game)))
