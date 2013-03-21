@@ -1,5 +1,5 @@
 (defpackage :ar.com.fchurca.frisk
-  (:use :common-lisp :cl-graph :cl-containers :metatilities)
+  (:use :common-lisp :cl-graph :cl-containers :metatilities :metabang-bind)
   (:export :territory
            :name
            :extra-armies
