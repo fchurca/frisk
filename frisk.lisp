@@ -12,8 +12,7 @@
   ((name (error "Debe ingresar el nombre del jugador") ir)))
 
 (defclass* game ()
-  ((turn-player nil a)
-   (territories (error "Debe especificar los territorios") ir)
+  ((territories (error "Debe especificar los territorios") ir)
    (frontiers (error "Debe especificar las fronteras") ir)))
 
 (defgeneric read-map (file &key)
@@ -64,8 +63,6 @@
       (error "Los territorios deben estar conectados"))
     (unless (eq (owner origin) (owner destination))
       (error "Los territorios tienen que tener el mismo dueño"))
-    (unless (eq (owner origin) (turn-player game))
-      (error "El jugador de turno no controla esos territorios"))
     (unless (> amount 0)
       (error "No se pueden mover 0 o menos ejércitos"))
     (unless (> (armies origin) amount)
@@ -79,8 +76,6 @@
   (let ((territory (territory game territory-key)))
     (unless (> amount 0)
       (error "No se pueden poner 0 o menos ejércitos"))
-    (unless (eq (owner territory) (turn-player game))
-      (error "El jugador de turno no controla ese territorio")) 
     (incf (armies territory) amount)))
 
 (defgeneric attack (game from to &key))
@@ -95,8 +90,6 @@
       (error "Los territorios deben estar conectados"))
     (unless (> attackers 2)
       (error "No se puede atacar teniendo 2 o menos ejércitos"))
-    (unless (eq (owner origin) (turn-player game))
-      (error "El jugador de turno no controla ese territorio"))
     (when (equal (owner destination) (owner origin))
       (error "Un jugador no se puede atacar a sí mismo"))
     (let ((decrement (1+ (min defenders (- attackers 2)))))
