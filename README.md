@@ -1,5 +1,6 @@
 Common Lisp implementation of a Risk-like board game.
-=Tentative waypoints=
+
+Tentative waypoints
   * Basic API
   * "One-seat" CLI
   * Web frontend?
@@ -8,7 +9,7 @@ Common Lisp implementation of a Risk-like board game.
     * CLI?
     * GUI?
 
-=TODO=
+TODO
   * Add package definition
   * Add a game class
     * Player repository
