@@ -1,14 +1,5 @@
 (in-package :ar.com.fchurca.frisk)
 
-(defun keys (hash-table)
-  (loop for k being the hash-keys in hash-table collecting k))
-
-(defun shuffle (list)
-   (loop for m from (length list) downto 1
-         for l = list then (remove v l :count 1)
-         for v = (elt l (random m))
-         collecting v))
-
 (defclass* territory ()
   ((name (error "Debe ingresar el nombre del territorio") ir)
    (extra-armies
@@ -73,11 +64,11 @@
 
 (defgeneric territory-keys (game)
   (:method ((game game))
-   (keys (territories game))))
+   (hash-table-keys (territories game))))
 
 (defgeneric player-keys (game)
   (:method ((game game))
-   (keys (players game))))
+   (hash-table-keys (players game))))
 
 (defgeneric territories-connected-p (game origin-key destination-key)
   (:method ((game game) origin-key destination-key)
@@ -92,28 +83,26 @@
 
 (defgeneric shuffle-territories (game)
   (:method ((game game))
-   (unless (territory-keys game)
-     (error "El juego debe tener territorios"))
-   (unless (player-keys game)
-     (error "El juego debe tener jugadores"))
-   (flet
-     ((initialize-territory (territory player)
-        (setf (owner (territory game territory)) (player game player))
-        (setf (armies (territory game territory)) 1)))
-     (let* ((territories (shuffle (territory-keys game)))
-            (players (shuffle (player-keys game)))
-            (share (floor (/ (length territories) (length players)))))
-       (dolist (player players)
-         (loop repeat share
-               for territory = (first territories) do
-               (initialize-territory territory player)
-               (pop territories)))
-       (loop while territories
-         for territory = (first territories)
-         for player = (first players) do
-         (initialize-territory territory player)
-         (pop players)
-         (pop territories))))))
+    (let ((territory-count (size (territories game)))
+          (player-count (size (players game))))
+      (when (= territory-count 0)
+        (error "El juego debe tener territorios"))
+      (when (= player-count 0)
+        (error "El juego debe tener jugadores"))
+      (unless (= (rem territory-count player-count) 0)
+        (error "Los territorios deben ser divisibles entre los jugadores"))
+      (flet
+        ((initialize-territory (territory player)
+           (setf (owner (territory game territory)) (player game player))
+           (setf (armies (territory game territory)) 1)))
+        (let* ((territories (shuffle (territory-keys game)))
+               (players (shuffle (player-keys game)))
+               (share (floor (/ territory-count player-count))))
+          (dolist (player players)
+            (loop repeat share
+                  for territory = (first territories) do
+                  (initialize-territory territory player)
+                  (pop territories))))))))
 
 (defgeneric move-armies (game from to amount &key)
   (:method ((game game) origin-key destination-key amount &key)
@@ -131,7 +120,7 @@
      (incf (armies destination) amount))))
 
 (defgeneric place-armies (game where amount &key)
-  (:method ((game game) territory-key amount &key)
+  (:method ((game game) territory-key (amount integer) &key)
    (let ((territory (territory game territory-key)))
      (unless (> amount 0)
        (error "No se pueden poner 0 o menos ejércitos"))

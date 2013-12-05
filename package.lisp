@@ -1,5 +1,10 @@
 (defpackage :ar.com.fchurca.frisk
-  (:use :common-lisp :cl-graph :cl-containers :metatilities :metabang-bind)
+  (:use :common-lisp
+        :cl-graph
+        :cl-containers
+        :metabang-bind)
+  (:import-from :metatilities :defclass*)
+  (:import-from :alexandria :shuffle :hash-table-keys)
   (:export :territory
            :name
            :extra-armies
