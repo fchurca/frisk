@@ -17,12 +17,12 @@
 
 (defclass* game ()
   ((game-map (error "Debe especificar el mapa") ir)
-   (players (make-hash-table) r)))
+   (players (make-hash-table :test 'equalp) ir)))
 
 (defgeneric read-map (file &key)
   (:method ((file stream) &key)
    (let ((*read-eval* nil)
-         (territories (make-hash-table))
+         (territories (make-hash-table :test 'equalp))
          (frontiers (make-container 'graph-container))
          (filecontents (read file)))
      (dolist (territory (getf filecontents :territories))
@@ -83,26 +83,26 @@
 
 (defgeneric shuffle-territories (game)
   (:method ((game game))
-    (let ((territory-count (size (territories game)))
-          (player-count (size (players game))))
-      (when (= territory-count 0)
-        (error "El juego debe tener territorios"))
-      (when (= player-count 0)
-        (error "El juego debe tener jugadores"))
-      (unless (= (rem territory-count player-count) 0)
-        (error "Los territorios deben ser divisibles entre los jugadores"))
-      (flet
-        ((initialize-territory (territory player)
-           (setf (owner (territory game territory)) (player game player))
-           (setf (armies (territory game territory)) 1)))
-        (let* ((territories (shuffle (territory-keys game)))
-               (players (shuffle (player-keys game)))
-               (share (floor (/ territory-count player-count))))
-          (dolist (player players)
-            (loop repeat share
-                  for territory = (first territories) do
-                  (initialize-territory territory player)
-                  (pop territories))))))))
+   (let ((territory-count (size (territories game)))
+         (player-count (size (players game))))
+     (when (= territory-count 0)
+       (error "El juego debe tener territorios"))
+     (when (= player-count 0)
+       (error "El juego debe tener jugadores"))
+     (unless (= (rem territory-count player-count) 0)
+       (error "Los territorios deben ser divisibles entre los jugadores"))
+     (flet
+       ((initialize-territory (territory player)
+          (setf (owner (territory game territory)) (player game player))
+          (setf (armies (territory game territory)) 1)))
+       (let* ((territories (shuffle (territory-keys game)))
+              (players (shuffle (player-keys game))))
+         (loop
+           for player = (first (nconc players players))
+                      then (progn (setf players (rest players)) (first players))
+           for territory in territories
+           while territory do
+           (initialize-territory territory player)))))))
 
 (defgeneric move-armies (game from to amount &key)
   (:method ((game game) origin-key destination-key amount &key)
