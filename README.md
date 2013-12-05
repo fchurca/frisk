@@ -9,9 +9,14 @@ Tentative waypoints
     * CLI?
     * GUI?
 
-TODO
+DONE
   * Add package definition
   * Add a game class
     * Player repository
     * Continent and territory repositories
-    * Frontiers graph; possibly with [http://common-lisp.net/project/cl-graph/ cl-graph]
+    * Frontiers graph; ~~possibly~~ with [http://common-lisp.net/project/cl-graph/ cl-graph]
+
+TODO
+  * Turns
+    * Maybe a FSM/DFA?
+
