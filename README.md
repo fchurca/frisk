@@ -13,10 +13,11 @@ DONE
   * Add package definition
   * Add a game class
     * Player repository
-    * Continent and territory repositories
-    * Frontiers graph; ~~possibly~~ with [http://common-lisp.net/project/cl-graph/ cl-graph]
+    * Territory repositories
+    * Frontiers graph; ~~possibly~~ with [cl-graph](http://common-lisp.net/project/cl-graph/)
 
 TODO
   * Turns
     * Maybe a FSM/DFA?
+  * Add continents to game class
 
