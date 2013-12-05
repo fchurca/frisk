@@ -19,8 +19,8 @@
   ((game-map (error "Debe especificar el mapa") ir)
    (players (make-hash-table :test 'equalp) ir)))
 
-(defgeneric read-map (file &key)
-  (:method ((file stream) &key)
+(defgeneric read-map (file)
+  (:method ((file stream))
    (let ((*read-eval* nil)
          (territories (make-hash-table :test 'equalp))
          (frontiers (make-container 'graph-container))
@@ -36,10 +36,10 @@
            (add-edge-between-vertexes frontiers key frontierkey))))
      (make-instance 'game-map :territories territories :frontiers frontiers)))
 
-  (:method ((path pathname) &key)
+  (:method ((path pathname))
    (with-open-file (file path) (read-map file)))
 
-  (:method ((path string) &key)
+  (:method ((path string))
    (read-map
      (parse-namestring
        (if (probe-file path)
@@ -98,8 +98,8 @@
          (setf (owner (territory game territory)) (player game player))
          (setf (armies (territory game territory)) 1)))))
 
-(defgeneric move-armies (game from to amount &key)
-  (:method ((game game) origin-key destination-key amount &key)
+(defgeneric move-armies (game from to amount)
+  (:method ((game game) origin-key destination-key amount)
    (let ((origin (territory game origin-key))
          (destination (territory game destination-key)))
      (unless (territories-connected-p game origin-key destination-key)
@@ -113,15 +113,15 @@
      (decf (armies origin) amount)
      (incf (armies destination) amount))))
 
-(defgeneric place-armies (game where amount &key)
-  (:method ((game game) territory-key (amount integer) &key)
+(defgeneric place-armies (game where amount)
+  (:method ((game game) territory-key (amount integer))
    (let ((territory (territory game territory-key)))
      (unless (> amount 0)
        (error "No se pueden poner 0 o menos ejércitos"))
      (incf (armies territory) amount))))
 
-(defgeneric attack (game from to &key)
-  (:method ((game game) origin-key destination-key &key)
+(defgeneric attack (game from to)
+  (:method ((game game) origin-key destination-key)
    (symbol-macrolet
      ((origin (territory game origin-key))
       (destination (territory game destination-key))
