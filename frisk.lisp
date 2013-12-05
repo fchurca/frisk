@@ -1,19 +1,29 @@
 (in-package :ar.com.fchurca.frisk)
 
+(defun keys (hash-table)
+  (loop for k being the hash-keys in hash-table collecting k))
+
+(defun shuffle (list)
+   (loop for m from (length list) downto 1
+         for l = list then (remove v l :count 1)
+         for v = (elt l (random m))
+         collecting v)) 
+
 (defclass* territory ()
   ((name (error "Debe ingresar el nombre del territorio") ir)
    (extra-armies
      (error "Debe ingresar la cantidad de ejércitos adicionales del territorio")
      ir)
    (owner nil a)
-   (armies 0 a)))
+   (armies nil a)))
 
 (defclass* player ()
   ((name (error "Debe ingresar el nombre del jugador") ir)))
 
 (defclass* game ()
   ((territories (error "Debe especificar los territorios") ir)
-   (frontiers (error "Debe especificar las fronteras") ir)))
+   (frontiers (error "Debe especificar las fronteras") ir)
+   (players (make-hash-table) r)))
 
 (defgeneric read-map (file &key)
   (:method ((file stream) &key)
@@ -45,14 +55,47 @@
 (defun territory (game territory-key)
   (gethash territory-key (territories game)))
 
+(defun player (game player-key)
+  (gethash player-key (players game)))
+
 (defun territory-keys (game)
-  (loop for k being the hash-keys in (territories game) collecting k))
+  (keys (territories game)))
+
+(defun player-keys (game)
+  (keys (players game)))
 
 (defun territories-connected-p (game origin-key destination-key)
   (let ((graph (frontiers game)))
     (vertices-share-edge-p
       (find-vertex graph origin-key)
       (find-vertex graph destination-key))))
+
+(defun add-player (game name &optional (handle name))
+  (setf (gethash handle (players game)) (make-instance 'player :name name)))
+
+(defun initialize-territory (territory player)
+  (setf (owner territory) player)
+  (setf (armies territory) 1))
+
+(defun shuffle-territories (game)
+  (unless (territory-keys game)
+    (error "El juego debe tener territorios"))
+  (unless (player-keys game)
+    (error "El juego debe tener jugadores"))
+  (let* ((territories (shuffle (territory-keys game)))
+        (players (shuffle (player-keys game)))
+        (share (floor (/ (length territories) (length players)))))
+    (dolist (player players)
+      (loop repeat share
+            for territory = (first territories) do
+            (initialize-territory (territory game territory) (player game player))
+            (pop territories)))
+    (loop while territories
+          for territory = (first territories)
+          for player = (first players) do
+          (initialize-territory (territory game territory) (player game player))
+          (pop players)
+          (pop territories))))
 
 (defgeneric move-armies (game from to amount &key))
 
@@ -99,4 +142,15 @@
         (setf (owner destination) (owner origin))
         (move-armies game origin-key destination-key 1)))
     (eq (owner origin) (owner destination))))
+
+(defun print-game (game)
+  (format t "~&Jugadores:")
+  (loop for v being the hash-values in (players game) do
+        (format t "~&~t~a" (name v)))
+  (format t "~&Territorios:")
+  (loop for v being the hash-values in (territories game) do
+        (format t "~&~a~&~tDueño:~t~a~&~tEjércitos:~a"
+                (name v)
+                (if (owner v) (name (owner v)) "Ninguno")
+                (armies v))))
 
