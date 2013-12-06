@@ -68,14 +68,14 @@
          path
          (format nil "~a.save" path))))))
 
-(defmethod initialize-instance ((game game) &key game-map player-names)
+(defmethod initialize-instance ((game game) &key game-map players)
   (setf (slot-value game 'game-map) ; Maybe specialize with :before-methods?
         (typecase game-map
           (game-map game-map)
           (t (read-map game-map))))
   (setf (slot-value game 'players) (make-hash-table :test 'equalp))
-  (dolist (name player-names) (add-player game name))
-  (when player-names (shuffle-territories game)))
+  (dolist (name players) (add-player game name))
+  (when players (shuffle-territories game)))
 
 (defgeneric territory (container key)
   (:method ((container game-map) key)
