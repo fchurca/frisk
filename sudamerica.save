@@ -1,0 +1,2 @@
+(:game-map "sudamerica.map"
+ :players ("Fede" "Javi"))
