@@ -20,12 +20,10 @@
    (players nil r)))
 
 (defgeneric read-map (file)
-  (:method ((file stream))
-   (let ((*read-eval* nil)
-         (territories (make-hash-table :test 'equalp))
-         (frontiers (make-container 'graph-container))
-         (filecontents (read file)))
-     (dolist (territory (getf filecontents :territories))
+  (:method ((list list))
+   (let* ((territories (make-hash-table :test 'equalp))
+         (frontiers (make-container 'graph-container)))
+     (dolist (territory (getf list :territories))
        (destructuring-bind (key name extra-armies terr-frontiers) territory
          (add-vertex frontiers key)
          (setf (gethash key territories)
@@ -35,6 +33,10 @@
          (dolist (frontierkey terr-frontiers)
            (add-edge-between-vertexes frontiers key frontierkey))))
      (make-instance 'game-map :territories territories :frontiers frontiers)))
+
+  (:method ((file stream))
+   (let* ((*read-eval* nil))
+     (read-map (read file))))
 
   (:method ((path pathname))
    (with-open-file (file path) (read-map file)))
@@ -46,11 +48,31 @@
          path
          (format nil "~a.map" path))))))
 
-(defmethod initialize-instance ((game game) &key map player-names)
+(defgeneric read-game (file)
+  (:method ((list list))
+   (make-instance 'game
+                  :game-map (read-map (getf list :game-map))
+                  :players (getf list :players)))
+
+  (:method ((file stream))
+   (let ((*read-eval* nil))
+     (read-game (read file))))
+
+  (:method ((path pathname))
+   (with-open-file (file path) (read-game file)))
+
+  (:method ((path string))
+   (read-game
+     (parse-namestring
+       (if (probe-file path)
+         path
+         (format nil "~a.save" path))))))
+
+(defmethod initialize-instance ((game game) &key game-map player-names)
   (setf (slot-value game 'game-map) ; Maybe specialize with :before-methods?
-        (typecase map
-          (game-map map)
-          (t (read-map map))))
+        (typecase game-map
+          (game-map game-map)
+          (t (read-map game-map))))
   (setf (slot-value game 'players) (make-hash-table :test 'equalp))
   (dolist (name player-names) (add-player game name))
   (when player-names (shuffle-territories game)))
