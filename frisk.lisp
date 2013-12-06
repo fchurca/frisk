@@ -16,8 +16,8 @@
   ((name (error "Debe ingresar el nombre del jugador") ir)))
 
 (defclass* game ()
-  ((game-map (error "Debe especificar el mapa") ir)
-   (players (make-hash-table :test 'equalp) ir)))
+  ((game-map nil r)
+   (players nil r)))
 
 (defgeneric read-map (file)
   (:method ((file stream))
@@ -45,6 +45,15 @@
        (if (probe-file path)
          path
          (format nil "~a.map" path))))))
+
+(defmethod initialize-instance ((game game) &key map player-names)
+  (setf (slot-value game 'game-map) ; Maybe specialize with :before-methods?
+        (typecase map
+          (game-map map)
+          (t (read-map map))))
+  (setf (slot-value game 'players) (make-hash-table :test 'equalp))
+  (dolist (name player-names) (add-player game name))
+  (when player-names (shuffle-territories game)))
 
 (defgeneric territory (container key)
   (:method ((container game-map) key)
@@ -143,13 +152,12 @@
 
 (defgeneric print-game (game)
   (:method ((game game))
-   (format t "~&Jugadores:")
-   (loop for v being the hash-values in (players game) do
-         (format t "~&~t~a" (name v)))
+   (format t "~&Jugadores:~t~{~a~^, ~}"
+           (loop for v being the hash-values in (players game) collecting (name v)))
    (format t "~&Territorios:")
    (loop for v being the hash-values in (territories game) do
-         (format t "~&~a~&~tDueño:~t~a~&~tEjércitos:~a"
+         (format t "~&~a~&~tDueño:~t~a~&~tEjércitos:~t~a"
                  (name v)
                  (if (owner v) (name (owner v)) "Ninguno")
-                 (armies v)))))
+                 (if (armies v) (armies v) "Ninguno")))))
 
