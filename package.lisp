@@ -11,14 +11,16 @@
            :owner
            :armies
            :player
+           :game
            :read-map
+           :read-game
+           :territory-keys
+           :player-keys
+           :territories-connected-p
+           :add-player
+           :shuffle-territories
            :move-armies
            :place-armies
            :attack
-           :game
-           :territories
-           :territory-keys
-           :frontiers
-           :turn-player
-           :territories-connected-p))
+           :print-game))
 
