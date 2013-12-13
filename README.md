@@ -18,6 +18,6 @@ DONE
 
 TODO
   * Turns
-    * Maybe a FSM/DFA?
+    * Polish the FSM a bit more
   * Add continents to game class
 
