@@ -3,11 +3,16 @@
     (make-instance 'fsm
                    :states `(
                              :foo (
-                                   :baz ,(lambda (fsm) (switch fsm :bar))
-                                   :quz ,(lambda (fsm) t))
+                                   :baz ,(lambda (fsm)
+                                           (switch fsm :bar))
+                                   :quz ,(lambda (fsm)
+                                           t))
                              :bar (
-                                   :qux ,(lambda (fsm string) (print string) (switch fsm :foo))
-                                   :quux ,(lambda (fsm) t)))
+                                   :qux ,(lambda (fsm string)
+                                           (print string)
+                                           (switch fsm :foo))
+                                   :quux ,(lambda (fsm)
+                                            t)))
                    :state :foo))
 ;*fsm*
 (states *fsm*)
