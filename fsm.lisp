@@ -1,19 +1,17 @@
 #|
 (defparameter *fsm*
-    (make-instance 'fsm
-                   :states `(
-                             :foo (
-                                   :baz ,(lambda (fsm)
-                                           (switch fsm :bar))
-                                   :quz ,(lambda (fsm)
-                                           t))
-                             :bar (
-                                   :qux ,(lambda (fsm string)
-                                           (print string)
-                                           (switch fsm :foo))
-                                   :quux ,(lambda (fsm)
-                                            t)))
-                   :state :foo))
+  (make-instance 'fsm
+                 :states `(
+                           :foo (
+                                 :baz :bar
+                                 :quz :foo)
+                           :bar (
+                                 :qux ,(lambda (fsm string)
+                                         (print string)
+                                         (switch fsm :foo))
+                                 :quux ,(lambda (fsm)
+                                          t)))
+                 :state :foo))
 ;*fsm*
 (states *fsm*)
 ;(:FOO :BAR)
@@ -54,7 +52,10 @@
 
 (defgeneric send (fsm message &rest rest)
   (:method ((fsm fsm) message &rest rest)
-   (let ((fun (getf (getf (slot-value fsm 'states) (state fsm)) message)))
-     (if fun
-       (apply fun fsm rest)
-       (error (format nil "Machine ~a can't receive message ~a" fsm message))))))
+   (let ((callback (getf (getf (slot-value fsm 'states) (state fsm)) message)))
+     (typecase callback
+       (function
+         (apply callback fsm rest))
+       (null
+         (error (format nil "Machine ~a can't receive message ~a" fsm message)))
+       (t (switch fsm callback))))))
