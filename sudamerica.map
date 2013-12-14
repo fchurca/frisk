@@ -1,6 +1,6 @@
 (:territories (
                (:argentina "Argentina" 1 ())
-               (:peru "Peru" 3 (:argentina))
+               (:peru "Perú" 3 (:argentina))
                (:brazil "Brazil" 2 (:argentina :peru))
                (:venezuela "Venezuela" 4 (:peru :brazil))))
 

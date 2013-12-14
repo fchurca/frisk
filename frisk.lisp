@@ -50,9 +50,15 @@
 
 (defgeneric read-game (file)
   (:method ((list list))
-   (make-instance 'game
-                  :game-map (read-map (getf list :game-map))
-                  :players (getf list :players)))
+   (let ((game (make-instance 'game :game-map (read-map (getf list :game-map)))))
+     (loop for (name armies-dist) on (getf list :players) by #'cddr
+           for player = (add-player game name) do
+           (loop for (territory-key armies) on armies-dist by #'cddr
+                 for territory = (territory game territory-key) do
+                 (setf (owner territory) player)
+                 (setf (armies territory) armies)))
+     ; TODO: signal error on uninitialized territories
+     game))
 
   (:method ((file stream))
    (let ((*read-eval* nil))
@@ -74,8 +80,7 @@
           (game-map game-map)
           (t (read-map game-map))))
   (setf (slot-value game 'players) (make-hash-table :test 'equalp))
-  (dolist (name players) (add-player game name))
-  (when players (shuffle-territories game)))
+  (dolist (name players) (add-player game name)))
 
 (defgeneric territory (container key)
   (:method ((container game-map) key)
