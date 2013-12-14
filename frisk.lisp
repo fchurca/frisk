@@ -172,14 +172,13 @@
          (move-armies game origin-key destination-key 1)))
      (eq (owner origin) (owner destination)))))
 
-(defgeneric print-game (game)
-  (:method ((game game))
-   (format t "~&Jugadores:~t~{~a~^, ~}"
-           (loop for v being the hash-values in (players game) collecting (name v)))
-   (format t "~&Territorios:")
-   (loop for v being the hash-values in (territories game) do
-         (format t "~&~a~&~tDueño:~t~a~&~tEjércitos:~t~a"
-                 (name v)
-                 (if (owner v) (name (owner v)) "Ninguno")
-                 (if (armies v) (armies v) "Ninguno")))))
+(defmethod print-object ((game game) stream)
+  (format stream "~&Jugadores:~t~{~a~^, ~}"
+          (loop for v being the hash-values in (players game) collecting (name v)))
+  (format stream "~&Territorios:")
+  (loop for v being the hash-values in (territories game) do
+        (format stream "~&~a~&~tDueño:~t~a~&~tEjércitos:~t~a"
+                (name v)
+                (if (owner v) (name (owner v)) "Ninguno")
+                (if (armies v) (armies v) "Ninguno"))))
 
