@@ -1,17 +1,17 @@
 #|
 (defparameter *fsm*
-  (make-instance 'fsm
-                 :states `(
-                           :foo (
-                                 :baz :bar
-                                 :quz :foo)
-                           :bar (
-                                 :qux ,(lambda (fsm string)
-                                         (print string)
-                                         (switch fsm :foo))
-                                 :quux ,(lambda (fsm)
-                                          t)))
-                 :state :foo))
+  (make-fsm
+    (
+     :foo (
+           :baz :bar
+           :quz :foo)
+     :bar (
+           :qux (lambda (fsm string)
+                  (print string)
+                  (switch fsm :foo))
+           :quux (lambda (fsm)
+                   t)))
+    :foo))
 ;*fsm*
 (states *fsm*)
 ;(:FOO :BAR)
@@ -33,6 +33,12 @@
 (defclass fsm ()
   ((states :initform nil :initarg :states)
    (state :initform nil :reader state :initarg :state)))
+
+(defmacro make-fsm (states initial-state)
+  `(make-instance 'fsm :states
+                  (list ,@(loop for (name spec) on states by #'cddr
+                                appending `(,name (list ,@spec))))
+                  :state ,initial-state))
 
 (defgeneric switch (fsm state)
   (:method ((fsm fsm) state)
