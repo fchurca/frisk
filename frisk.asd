@@ -7,6 +7,7 @@
   :description "Implementation of a Risk-like board game"
   :long-description ""
   :components ((:file "package")
-               (:file "frisk" :depends-on ("package")))
+               (:file "fsm" :depends-on ("package")) 
+               (:file "frisk" :depends-on ("package" "fsm")))
   :depends-on (:alexandria :cl-graph :metatilities-base))
 

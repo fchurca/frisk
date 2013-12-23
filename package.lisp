@@ -5,6 +5,12 @@
   (:import-from :metatilities :defclass*)
   (:import-from :alexandria :shuffle :hash-table-keys)
   (:export
+    ; FSM
+    :fsm
+    :make-fsm
+    :switch
+    :states
+    :available-messages
     ; Classes
     :territory
     :game-map

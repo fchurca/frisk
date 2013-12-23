@@ -1,3 +1,5 @@
+(in-package :ar.com.fchurca.frisk)
+
 #|
 (defparameter *fsm*
   (make-fsm
