@@ -1,8 +1,7 @@
 (defpackage :ar.com.fchurca.frisk
   (:use :common-lisp
         :cl-graph
-        :cl-containers
-        :metabang-bind)
+        :cl-containers)
   (:import-from :metatilities :defclass*)
   (:import-from :alexandria :shuffle :hash-table-keys)
   (:export

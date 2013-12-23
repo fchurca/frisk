@@ -8,5 +8,5 @@
   :long-description ""
   :components ((:file "package")
                (:file "frisk" :depends-on ("package")))
-  :depends-on (:alexandria :cl-graph :metatilities-base :metabang-bind))
+  :depends-on (:alexandria :cl-graph :metatilities-base))
 

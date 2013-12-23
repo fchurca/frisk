@@ -9,6 +9,10 @@ Tentative waypoints
     * CLI?
     * GUI?
 
+NOTES
+  * Before first use:
+`(quicklisp:quickload "alexandria" "cl-graph")`
+
 DONE
   * Add package definition
   * Add a game class
