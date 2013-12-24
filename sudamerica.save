@@ -1,3 +1,4 @@
 (:game-map "sudamerica.map"
- :players ("Fede" (:argentina 20 :venezuela 20)
+ :players ("Fede" "Javi")
+ :armies ("Fede" (:argentina 20 :venezuela 20)
            "Javi" (:brazil 30 :peru 10)))

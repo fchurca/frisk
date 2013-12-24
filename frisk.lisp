@@ -17,12 +17,14 @@
 
 (defclass* game ()
   ((game-map nil r)
-   (players nil r)))
+   (players nil r)
+   (head-player nil)
+   (turn-player nil)))
 
 (defgeneric read-map (file)
   (:method ((list list))
    (let* ((territories (make-hash-table :test 'equalp))
-         (frontiers (make-container 'graph-container)))
+          (frontiers (make-container 'graph-container)))
      (dolist (territory (getf list :territories))
        (destructuring-bind (key name extra-armies terr-frontiers) territory
          (add-vertex frontiers key)
@@ -50,12 +52,13 @@
 
 (defgeneric read-game (file)
   (:method ((list list))
-   (let ((game (make-instance 'game :game-map (read-map (getf list :game-map)))))
-     (loop for (name armies-dist) on (getf list :players) by #'cddr
-           for player = (add-player game name) do
+   (let ((game (make-instance 'game
+                              :game-map (read-map (getf list :game-map))
+                              :players (getf list :players))))
+     (loop for (name armies-dist) on (getf list :armies) by #'cddr do
            (loop for (territory-key armies) on armies-dist by #'cddr
                  for territory = (territory game territory-key) do
-                 (setf (owner territory) player)
+                 (setf (owner territory) (player game name))
                  (setf (armies territory) armies)))
      ; TODO: signal error on uninitialized territories
      game))
@@ -75,18 +78,46 @@
          (format nil "~a.save" path))))))
 
 (defmethod initialize-instance ((game game) &key game-map players)
-  (setf (slot-value game 'game-map) ; Maybe specialize with :before-methods?
-        (typecase game-map
-          (game-map game-map)
-          (t (read-map game-map))))
-  (setf (slot-value game 'players) (make-hash-table :test 'equalp))
-  (dolist (name players) (add-player game name)))
+  (with-slots ((the-game-map game-map)
+               (the-players players)
+               (the-head-player head-player)
+               (the-turn-player turn-player)) game
+    (setf the-game-map
+          (typecase game-map
+            (game-map game-map)
+            (t (read-map game-map))))
+    (setf the-players (make-hash-table :test 'equalp))
+    (dolist (name players) (add-player game name))  
+    (setf the-head-player (copy-list players))
+    (setf the-turn-player (copy-list players))))
 
 (defgeneric territory (container key)
   (:method ((container game-map) key)
    (gethash key (territories container)))
   (:method ((container game) key)
    (territory (game-map container) key)))
+
+(defgeneric head-player (game)
+  (:method ((game game)) (car (slot-value game 'head-player))))
+
+(defgeneric turn-player (game)
+  (:method ((game game)) (car (slot-value game 'turn-player))))
+
+(defgeneric pass-head (game)
+  (:method ((game game))
+   (with-slots ((the-head-player head-player)) game
+     (let ((head (pop the-head-player)))
+       (setf the-head-player (nconc the-head-player (list head)))))
+   (head-player game)))
+
+(defgeneric pass-turn (game)
+  (:method ((game game))
+   (with-slots ((the-turn-player turn-player)
+                (the-head-player head-player)) game
+     (pop the-turn-player)
+     (unless the-turn-player
+       (setf the-turn-player (copy-list the-head-player))))
+   (turn-player game)))
 
 (defmethod territories ((game game))
   (territories (game-map game)))
@@ -129,10 +160,11 @@
        (error "Los territorios deben ser divisibles entre los jugadores"))
      (loop
        with territories = (shuffle (territory-keys game))
-       for player in (let ((players (player-keys game))) (nconc players players))
+       for player in (let ((players (player-keys game)))
+                       (nconc players players))
        for territory in territories do
-         (setf (owner (territory game territory)) (player game player))
-         (setf (armies (territory game territory)) 1)))))
+       (setf (owner (territory game territory)) (player game player))
+       (setf (armies (territory game territory)) 1)))))
 
 (defgeneric move-armies (game from to amount)
   (:method ((game game) origin-key destination-key amount)
@@ -178,8 +210,11 @@
      (eq (owner origin) (owner destination)))))
 
 (defmethod print-object ((game game) stream)
-  (format stream "~&Jugadores:~t~{~a~^, ~}"
-          (loop for v being the hash-values in (players game) collecting (name v)))
+  (format stream "~&Jugadores:~t~{~a~^, ~}~&Cabecera:~t~a~&Turno:~t~a"
+          (loop for v being the hash-values in (players game)
+                collecting (name v))
+          (head-player game)
+          (turn-player game))
   (format stream "~&Territorios:")
   (loop for v being the hash-values in (territories game) do
         (format stream "~&~a~&~tDueño:~t~a~&~tEjércitos:~t~a"
