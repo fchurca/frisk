@@ -18,7 +18,7 @@
 (defclass* game ()
   ((game-map nil r)
    (players nil r)
-   (head-player nil)
+   (players-round nil)
    (turn-player nil)))
 
 (defgeneric read-map (file)
@@ -80,7 +80,7 @@
 (defmethod initialize-instance ((game game) &key game-map players)
   (with-slots ((the-game-map game-map)
                (the-players players)
-               (the-head-player head-player)
+               (the-players-round players-round)
                (the-turn-player turn-player)) game
     (setf the-game-map
           (typecase game-map
@@ -88,8 +88,9 @@
             (t (read-map game-map))))
     (setf the-players (make-hash-table :test 'equalp))
     (dolist (name players) (add-player game name))  
-    (setf the-head-player (copy-list players))
-    (setf the-turn-player (copy-list players))))
+    (setf the-players-round (copy-list players))
+    (nconc the-players-round the-players-round)
+    (setf the-turn-player the-players-round)))
 
 (defgeneric territory (container key)
   (:method ((container game-map) key)
@@ -98,25 +99,24 @@
    (territory (game-map container) key)))
 
 (defgeneric head-player (game)
-  (:method ((game game)) (car (slot-value game 'head-player))))
+  (:method ((game game)) (car (slot-value game 'players-round))))
 
 (defgeneric turn-player (game)
   (:method ((game game)) (car (slot-value game 'turn-player))))
 
 (defgeneric pass-head (game)
   (:method ((game game))
-   (with-slots ((the-head-player head-player)) game
-     (let ((head (pop the-head-player)))
-       (setf the-head-player (nconc the-head-player (list head)))))
+   (pop (slot-value game 'players-round))
    (head-player game)))
 
 (defgeneric pass-turn (game)
   (:method ((game game))
    (with-slots ((the-turn-player turn-player)
-                (the-head-player head-player)) game
+                (the-players-round players-round)) game
      (pop the-turn-player)
-     (unless the-turn-player
-       (setf the-turn-player (copy-list the-head-player))))
+     (when (eq the-turn-player the-players-round)
+       (pass-head game)
+       (pop the-turn-player)))
    (turn-player game)))
 
 (defmethod territories ((game game))
