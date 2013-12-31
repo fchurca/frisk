@@ -6,7 +6,8 @@
      (error "Debe ingresar la cantidad de ejércitos adicionales del territorio")
      ir)
    (owner nil a)
-   (armies nil a)))
+   (armies nil a)
+   (movable-armies nil a)))
 
 (defclass* game-map ()
   ((territories (error "Debe especificar los territorios") ir)
@@ -166,6 +167,11 @@
        (setf (owner (territory game territory)) (player game player))
        (setf (armies (territory game territory)) 1)))))
 
+(defgeneric reset-movable-armies (game)
+  (:method ((game game))
+   (loop for territory being the hash-values in (territories game) do
+         (setf (movable-armies territory) (armies territory)))))
+
 (defgeneric move-armies (game from to amount)
   (:method ((game game) origin-key destination-key amount)
    (let ((origin (territory game origin-key))
@@ -176,9 +182,10 @@
        (error "Los territorios tienen que tener el mismo dueño"))
      (unless (> amount 0)
        (error "No se pueden mover 0 o menos ejércitos"))
-     (unless (> (armies origin) amount)
+     (unless (> (movable-armies origin) amount)
        (error "No hay suficientes ejércitos"))
      (decf (armies origin) amount)
+     (decf (movable-armies origin) amount)
      (incf (armies destination) amount))))
 
 (defgeneric place-armies (game where amount)
