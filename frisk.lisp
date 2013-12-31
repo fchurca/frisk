@@ -19,6 +19,7 @@
 (defclass* game ()
   ((game-map nil r)
    (players nil r)
+   (fsm nil)
    (players-round nil)
    (turn-player nil)))
 
@@ -82,7 +83,8 @@
   (with-slots ((the-game-map game-map)
                (the-players players)
                (the-players-round players-round)
-               (the-turn-player turn-player)) game
+               (the-turn-player turn-player)
+               (the-fsm fsm)) game
     (setf the-game-map
           (typecase game-map
             (game-map game-map)
@@ -91,7 +93,14 @@
     (dolist (name players) (add-player game name))  
     (setf the-players-round (copy-list players))
     (nconc the-players-round the-players-round)
-    (setf the-turn-player the-players-round)))
+    (setf the-turn-player the-players-round)
+    (setf the-fsm (make-fsm (:setup (:done :placing-twice-n)
+                             :placing-twice-n (:done :placing-n)
+                             :placing-n (:done :attacking)
+                             :attacking ()
+                             :regrouping ()
+                             :placing (:done :attacking))
+                            :setup))))
 
 (defgeneric territory (container key)
   (:method ((container game-map) key)
@@ -115,10 +124,11 @@
    (with-slots ((the-turn-player turn-player)
                 (the-players-round players-round)) game
      (pop the-turn-player)
-     (when (eq the-turn-player the-players-round)
-       (pass-head game)
-       (pop the-turn-player)))
-   (turn-player game)))
+     (let ((is-head-player (eq the-turn-player the-players-round)))
+       (when is-head-player
+         (pass-head game)
+         (pop the-turn-player))
+       is-head-player))))
 
 (defmethod territories ((game game))
   (territories (game-map game)))
@@ -170,7 +180,7 @@
 (defgeneric reset-movable-armies (game)
   (:method ((game game))
    (loop for territory being the hash-values in (territories game) do
-         (setf (movable-armies territory) (armies territory)))))
+         (setf (movable-armies territory) (1- (armies territory))))))
 
 (defgeneric move-armies (game from to amount)
   (:method ((game game) origin-key destination-key amount)
@@ -182,7 +192,7 @@
        (error "Los territorios tienen que tener el mismo dueño"))
      (unless (> amount 0)
        (error "No se pueden mover 0 o menos ejércitos"))
-     (unless (> (movable-armies origin) amount)
+     (unless (>= (movable-armies origin) amount)
        (error "No hay suficientes ejércitos"))
      (decf (armies origin) amount)
      (decf (movable-armies origin) amount)
@@ -217,14 +227,16 @@
      (eq (owner origin) (owner destination)))))
 
 (defmethod print-object ((game game) stream)
-  (format stream "~&Jugadores:~t~{~a~^, ~}~&Cabecera:~t~a~&Turno:~t~a"
-          (loop for v being the hash-values in (players game)
-                collecting (name v))
-          (head-player game)
-          (turn-player game))
+  (format stream "~&Jugadores:~t~{~a~^, ~}"
+          (loop repeat (size (players game))
+                for p in (slot-value game 'players-round)
+                collecting (if (equal p (turn-player game))
+                             (format nil "-~a-" p)
+                             p)))
+  (format stream "~&Etapa:~t~a" (state (slot-value game 'fsm)))
   (format stream "~&Territorios:")
   (loop for v being the hash-values in (territories game) do
-        (format stream "~&~a~&~tDueño:~t~a~&~tEjércitos:~t~a"
+        (format stream "~&~t~a~&~t~tDueño:~t~t~a~&~t~tEjércitos:~t~t~a"
                 (name v)
                 (if (owner v) (name (owner v)) "Ninguno")
                 (if (armies v) (armies v) "Ninguno"))))
