@@ -21,7 +21,55 @@
    (players nil r)
    (fsm nil)
    (players-round nil)
-   (turn-player nil)))
+   (turn-player nil)
+   (pending-armies nil r)))
+
+(defmethod initialize-instance ((game game) &key game-map players)
+  (with-slots ((the-game-map game-map)
+               (the-players players)
+               (the-players-round players-round)
+               (the-turn-player turn-player)
+               (the-fsm fsm)) game
+    (setf the-game-map
+          (typecase game-map
+            (game-map game-map)
+            (t (read-map game-map))))
+    (setf the-players (make-hash-table :test 'equalp))
+    (dolist (name players) (add-player game name))  
+    (setf the-players-round (copy-list players))
+    (nconc the-players-round the-players-round)
+    (setf the-turn-player the-players-round)
+    (setf the-fsm (make-fsm
+                    (:setup (:done :placing-twice-n)
+                     :placing-twice-n
+                     (:place :placing-twice-n
+                      :done ((fsm)
+                             (when (eq (rotate-turn game) (head-player game))
+                               (switch fsm :placing-n))))
+                     :placing-n
+                     (:place :placing-n
+                      :done ((fsm)
+                             (when (eq (rotate-turn game) (head-player game))
+                               (reset-movable-armies game) 
+                               (switch fsm :attacking))))
+                     :attacking
+                     (:attack ((fsm from to)
+                               (attack game from to))
+                      :done ((fsm)
+                             (switch fsm :regrouping)))
+                     :regrouping
+                     (:move ((fsm from to amount)
+                             (move-armies game from to amount))
+                      :done ((fsm)
+                             (switch fsm (if (pass-turn game)
+                                           :placing
+                                           :attacking))))
+                     :placing
+                     (:place :placing
+                      :done ((fsm)
+                             (when (eq (rotate-turn game) (head-player game))
+                               (switch fsm :attacking)))))
+                    :setup))))
 
 (defgeneric read-map (file)
   (:method ((list list))
@@ -79,40 +127,6 @@
          path
          (format nil "~a.save" path))))))
 
-(defmethod initialize-instance ((game game) &key game-map players)
-  (with-slots ((the-game-map game-map)
-               (the-players players)
-               (the-players-round players-round)
-               (the-turn-player turn-player)
-               (the-fsm fsm)) game
-    (setf the-game-map
-          (typecase game-map
-            (game-map game-map)
-            (t (read-map game-map))))
-    (setf the-players (make-hash-table :test 'equalp))
-    (dolist (name players) (add-player game name))  
-    (setf the-players-round (copy-list players))
-    (nconc the-players-round the-players-round)
-    (setf the-turn-player the-players-round)
-    (setf the-fsm (make-fsm
-                    (:setup (:done :placing-twice-n)
-                     :placing-twice-n
-                     (:place :placing-twice-n
-                      :done :placing-n)
-                     :placing-n
-                     (:place :placing-n
-                      :done :attacking)
-                     :attacking
-                     (:attack :attacking
-                      :done :regrouping)
-                     :regrouping
-                     (:move :regrouping
-                      :done :attacking)
-                     :placing
-                     (:place :placing
-                      :done :attacking))
-                    :setup))))
-
 (defgeneric territory (container key)
   (:method ((container game-map) key)
    (gethash key (territories container)))
@@ -130,16 +144,18 @@
    (pop (slot-value game 'players-round))
    (head-player game)))
 
+(defgeneric rotate-turn (game)
+  (:method ((game game))
+   (pop (slot-value game 'turn-player))
+   (turn-player game)))
+
 (defgeneric pass-turn (game)
   (:method ((game game))
-   (with-slots ((the-turn-player turn-player)
-                (the-players-round players-round)) game
-     (pop the-turn-player)
-     (let ((is-head-player (eq the-turn-player the-players-round)))
-       (when is-head-player
-         (pass-head game)
-         (pop the-turn-player))
-       is-head-player))))
+   (let ((is-head-player (eq (rotate-turn game) (head-player game))))
+     (when is-head-player
+       (pass-head game)
+       (rotate-turn game))
+     is-head-player)))
 
 (defmethod territories ((game game))
   (territories (game-map game)))
@@ -159,6 +175,9 @@
   (:method ((game game))
    (hash-table-keys (players game))))
 
+(defmethod state ((game game))
+  (state (slot-value game 'fsm)))
+
 (defgeneric territories-connected-p (game origin-key destination-key)
   (:method ((game game) origin-key destination-key)
    (let ((graph (frontiers game)))
@@ -167,7 +186,8 @@
        (find-vertex graph destination-key)))))
 
 (defmethod send ((game game) message &rest rest)
-  (apply #'send (slot-value game 'fsm) message rest))
+  (apply #'send (slot-value game 'fsm) message rest)
+  game)
 
 (defgeneric add-player (game name)
   (:method ((game game) (name string))
@@ -194,7 +214,7 @@
 (defgeneric reset-movable-armies (game)
   (:method ((game game))
    (loop for territory being the hash-values in (territories game) do
-         (setf (movable-armies territory) (1- (armies territory))))))
+         (setf (movable-armies territory) (armies territory)))))
 
 (defgeneric move-armies (game from to amount)
   (:method ((game game) origin-key destination-key amount)
@@ -247,7 +267,7 @@
                 collecting (if (equal p (turn-player game))
                              (format nil "-~a-" p)
                              p)))
-  (format stream "~&Etapa:~t~a" (state (slot-value game 'fsm)))
+  (format stream "~&Etapa:~t~a" (state game))
   (format stream "~&Territorios:")
   (loop for v being the hash-values in (territories game) do
         (format stream "~&~t~a~&~t~tDueño:~t~t~a~&~t~tEjércitos:~t~t~a"
