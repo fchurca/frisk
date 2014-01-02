@@ -8,10 +8,10 @@
            :baz :bar
            :quz :foo)
      :bar (
-           :qux (lambda (fsm string)
+           :qux ((fsm string)
                   (print string)
                   (switch fsm :foo))
-           :quux (lambda (fsm)
+           :quux ((fsm)
                    t)))
     :foo))
 ;*fsm*
@@ -37,10 +37,17 @@
    (state :initform nil :reader state :initarg :state)))
 
 (defmacro make-fsm (states initial-state)
-  `(make-instance 'fsm :states
-                  (list ,@(loop for (name spec) on states by #'cddr
-                                appending `(,name (list ,@spec))))
-                  :state ,initial-state))
+  `(make-instance
+     'fsm :states
+     (list
+       ,@(loop for (name spec) on states by #'cddr appending
+               `(,name
+                  (list
+                    ,@(loop for (message spec) on spec by #'cddr appending
+                            `(,message ,(if (listp spec)
+                                          (cons 'lambda spec)
+                                          spec)))))))
+     :state ,initial-state))
 
 (defgeneric switch (fsm state)
   (:method ((fsm fsm) state)
