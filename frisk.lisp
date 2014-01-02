@@ -94,13 +94,24 @@
     (setf the-players-round (copy-list players))
     (nconc the-players-round the-players-round)
     (setf the-turn-player the-players-round)
-    (setf the-fsm (make-fsm (:setup (:done :placing-twice-n)
-                             :placing-twice-n (:done :placing-n)
-                             :placing-n (:done :attacking)
-                             :attacking ()
-                             :regrouping ()
-                             :placing (:done :attacking))
-                            :setup))))
+    (setf the-fsm (make-fsm
+                    (:setup (:done :placing-twice-n)
+                     :placing-twice-n
+                     (:place :placing-twice-n
+                      :done :placing-n)
+                     :placing-n
+                     (:place :placing-n
+                      :done :attacking)
+                     :attacking
+                     (:attack :attacking
+                      :done :regrouping)
+                     :regrouping
+                     (:move :regrouping
+                      :done :attacking)
+                     :placing
+                     (:place :placing
+                      :done :attacking))
+                    :setup))))
 
 (defgeneric territory (container key)
   (:method ((container game-map) key)
@@ -154,6 +165,9 @@
      (vertices-share-edge-p
        (find-vertex graph origin-key)
        (find-vertex graph destination-key)))))
+
+(defmethod send ((game game) message &rest rest)
+  (apply #'send (slot-value game 'fsm) message rest))
 
 (defgeneric add-player (game name)
   (:method ((game game) (name string))
