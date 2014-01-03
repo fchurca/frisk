@@ -45,16 +45,16 @@
           (flet
             ((pass-placing (fsm old-armies new-state
                                 &optional new-armies playing)
-               (when (> the-pending-armies 0)
-                 (error "No se pusieron todos los ejércitos aún"))
-               (setf the-pending-armies
-                     (if (if playing
-                           (pass-turn game)
-                           (rotate-turn game))
-                       (progn
-                         (switch fsm new-state)
-                         new-armies)
-                       old-armies))))
+                           (when (> the-pending-armies 0)
+                             (error "No se pusieron todos los ejércitos aún"))
+                           (setf the-pending-armies
+                                 (if (if playing
+                                       (pass-turn game)
+                                       (rotate-turn game))
+                                   (progn
+                                     (switch fsm new-state)
+                                     new-armies)
+                                   old-armies))))
             (make-fsm
               (:setup
                 (:done ((fsm)
@@ -69,7 +69,8 @@
                 (:place ((fsm where amount)
                          (place-armies game where amount))
                  :done ((fsm)
-                        (pass-placing fsm 5 :attacking)))
+                        (pass-placing fsm 5 :attacking)
+                        (reset-movable-armies game)))
                 :attacking
                 (:attack ((fsm from to)
                           (attack game from to))
@@ -88,7 +89,8 @@
                 (:place ((fsm where amount)
                          (place-armies game where amount))
                  :done ((fsm)
-                        (pass-placing fsm 5 :placing-n nil t))))
+                        (pass-placing fsm 5 :placing-n nil t)
+                        (reset-movable-armies game))))
               :setup)))))
 
 (defgeneric read-map (file)
