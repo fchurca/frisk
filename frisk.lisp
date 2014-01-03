@@ -29,7 +29,8 @@
                (the-players players)
                (the-players-round players-round)
                (the-turn-player turn-player)
-               (the-fsm fsm)) game
+               (the-fsm fsm)
+               (the-pending-armies pending-armies)) game
     (setf the-game-map
           (typecase game-map
             (game-map game-map)
@@ -39,37 +40,62 @@
     (setf the-players-round (copy-list players))
     (nconc the-players-round the-players-round)
     (setf the-turn-player the-players-round)
-    (setf the-fsm (make-fsm
-                    (:setup (:done :placing-twice-n)
-                     :placing-twice-n
-                     (:place :placing-twice-n
-                      :done ((fsm)
-                             (when (eq (rotate-turn game) (head-player game))
-                               (switch fsm :placing-n))))
-                     :placing-n
-                     (:place :placing-n
-                      :done ((fsm)
-                             (when (eq (rotate-turn game) (head-player game))
-                               (reset-movable-armies game) 
-                               (switch fsm :attacking))))
-                     :attacking
-                     (:attack ((fsm from to)
-                               (attack game from to))
-                      :done ((fsm)
-                             (switch fsm :regrouping)))
-                     :regrouping
-                     (:move ((fsm from to amount)
-                             (move-armies game from to amount))
-                      :done ((fsm)
-                             (switch fsm (if (pass-turn game)
-                                           :placing
-                                           :attacking))))
-                     :placing
-                     (:place :placing
-                      :done ((fsm)
-                             (when (eq (rotate-turn game) (head-player game))
-                               (switch fsm :attacking)))))
-                    :setup))))
+    (setf the-pending-armies nil)
+    (setf the-fsm
+          (make-fsm
+            (:setup
+              (:done ((fsm)
+                      (setf the-pending-armies 10)
+                      (switch fsm :placing-twice-n)))
+              :placing-twice-n
+              (:place ((fsm where amount)
+                       (place-armies game where amount))
+               :done ((fsm)
+                      (when (> the-pending-armies 0)
+                        (error "No se pusieron todos los ejércitos aún"))
+                      (if (eq (rotate-turn game) (head-player game))
+                        (progn
+                          (setf the-pending-armies 5)
+                          (switch fsm :placing-n))
+                        (setf the-pending-armies 10))))
+              :placing-n
+              (:place ((fsm where amount)
+                       (place-armies game where amount))
+               :done ((fsm)
+                      (when (> the-pending-armies 0)
+                        (error "No se pusieron todos los ejércitos aún"))
+                      (setf the-pending-armies 5)
+                      (when (eq (rotate-turn game) (head-player game))
+                        (reset-movable-armies game)
+                        (setf the-pending-armies nil)
+                        (switch fsm :attacking))))
+              :attacking
+              (:attack ((fsm from to)
+                        (attack game from to))
+               :done ((fsm)
+                      (switch fsm :regrouping)))
+              :regrouping
+              (:move ((fsm from to amount)
+                      (move-armies game from to amount))
+               :done ((fsm)
+                      (switch fsm (if (pass-turn game)
+                                    (progn
+                                      (setf the-pending-armies 5)
+                                      :placing)
+                                    :attacking))))
+              :placing
+              (:place ((fsm where amount)
+                       (place-armies game where amount))
+               :done ((fsm)
+                      (when (> the-pending-armies 0)
+                        (error "No se pusieron todos los ejércitos aún"))
+                      (setf the-pending-armies
+                            (if (pass-turn game)
+                              (progn
+                                (switch fsm :attacking)
+                                nil)
+                              5)))))
+            :setup))))
 
 (defgeneric read-map (file)
   (:method ((list list))
@@ -237,6 +263,9 @@
    (let ((territory (territory game territory-key)))
      (unless (> amount 0)
        (error "No se pueden poner 0 o menos ejércitos"))
+     (unless (<= amount (pending-armies game))
+       (error "No quedan tantos ejércitos por poner"))
+     (decf (slot-value game 'pending-armies) amount)   
      (incf (armies territory) amount))))
 
 (defgeneric attack (game from to)
@@ -268,6 +297,8 @@
                              (format nil "-~a-" p)
                              p)))
   (format stream "~&Etapa:~t~a" (state game))
+  (if (pending-armies game)
+    (format stream "~&Ejércitos pendientes:~t~a" (pending-armies game)))
   (format stream "~&Territorios:")
   (loop for v being the hash-values in (territories game) do
         (format stream "~&~t~a~&~t~tDueño:~t~t~a~&~t~tEjércitos:~t~t~a"
