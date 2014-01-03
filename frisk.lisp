@@ -3,7 +3,7 @@
 (defclass* territory ()
   ((name (error "Debe ingresar el nombre del territorio") ir)
    (extra-armies
-     (error "Debe ingresar la cantidad de ejércitos adicionales del territorio")
+     (error "Debe ingresar los ejércitos adicionales del territorio")
      ir)
    (owner nil a)
    (armies nil a)
@@ -14,7 +14,8 @@
    (frontiers (error "Debe especificar las fronteras") ir)))
 
 (defclass* player ()
-  ((name (error "Debe ingresar el nombre del jugador") ir)))
+  ((name (error "Debe ingresar el nombre del jugador") ir)
+   (game (error "Debe especificar el juego vinculado al jugador") ir)))
 
 (defclass* game ()
   ((game-map nil r)
@@ -36,8 +37,10 @@
             (game-map game-map)
             (t (read-map game-map))))
     (setf the-players (make-hash-table :test 'equalp))
-    (dolist (name players) (add-player game name))  
-    (setf the-players-round (copy-list players))
+    (setf the-players-round nil)
+    (dolist (name players)
+      (pushnew (add-player game name) the-players-round))
+    (setf the-players-round (reverse the-players-round))
     (nconc the-players-round the-players-round)
     (setf the-turn-player the-players-round)
     (setf the-pending-armies nil)
@@ -46,7 +49,7 @@
             ((pass-placing (fsm old-armies new-state
                                 &optional new-armies playing)
                            (when (> the-pending-armies 0)
-                             (error "No se pusieron todos los ejércitos aún"))
+                             (error "No se pusieron todos los ejércitos"))
                            (setf the-pending-armies
                                  (if (if playing
                                        (pass-turn game)
@@ -54,7 +57,9 @@
                                    (progn
                                      (switch fsm new-state)
                                      new-armies)
-                                   old-armies))))
+                                   old-armies)))
+             (placeable-armies ()
+               (placeable-armies (turn-player game))))
             (make-fsm
               (:setup
                 (:done ((fsm)
@@ -80,16 +85,18 @@
                 (:move ((fsm from to amount)
                         (move-armies game from to amount))
                  :done ((fsm)
-                        (switch fsm (if (pass-turn game)
-                                      (progn
-                                        (setf the-pending-armies 5)
-                                        :placing)
-                                      :attacking))))
+                        (switch fsm
+                          (if (pass-turn game)
+                            (progn
+                              (setf the-pending-armies (placeable-armies))
+                              :placing)
+                            :attacking))))
                 :placing
                 (:place ((fsm where amount)
                          (place-armies game where amount))
                  :done ((fsm)
-                        (pass-placing fsm 5 :placing-n nil t)
+                        (pass-placing fsm
+                                      (placeable-armies) :placing-n nil t)
                         (reset-movable-armies game))))
               :setup)))))
 
@@ -157,11 +164,11 @@
 
 (defgeneric head-player (game)
   (:method ((game game))
-   (player game (car (slot-value game 'players-round)))))
+   (car (slot-value game 'players-round))))
 
 (defgeneric turn-player (game)
   (:method ((game game))
-   (player game (car (slot-value game 'turn-player)))))
+   (car (slot-value game 'turn-player))))
 
 (defgeneric pass-head (game)
   (:method ((game game))
@@ -202,6 +209,19 @@
 (defmethod state ((game game))
   (state (slot-value game 'fsm)))
 
+(defmethod armies ((player player))
+  (loop for territory being the hash-values in (territories (game player))
+        when (eq (owner territory) player)
+        summing (armies territory)))
+
+(defmethod territories ((player player))
+  (loop for territory being the hash-values in (territories (game player))
+        when (eq (owner territory) player) count it))
+
+(defgeneric placeable-armies (player)
+  (:method ((player player))
+   (values (ceiling (/ (armies player) 2)))))
+
 (defgeneric territories-connected-p (game origin-key destination-key)
   (:method ((game game) origin-key destination-key)
    (let ((graph (frontiers game)))
@@ -215,7 +235,8 @@
 
 (defgeneric add-player (game name)
   (:method ((game game) (name string))
-   (setf (gethash name (players game)) (make-instance 'player :name name))))
+   (setf (gethash name (players game))
+         (make-instance 'player :name name :game game))))
 
 (defgeneric shuffle-territories (game)
   (:method ((game game))
@@ -229,10 +250,9 @@
        (error "Los territorios deben ser divisibles entre los jugadores"))
      (loop
        with territories = (shuffle (territory-keys game))
-       for player in (let ((players (player-keys game)))
-                       (nconc players players))
+       for player in (slot-value *game* 'players-round)
        for territory in territories do
-       (setf (owner (territory game territory)) (player game player))
+       (setf (owner (territory game territory)) player)
        (setf (armies (territory game territory)) 1)))))
 
 (defgeneric reset-movable-armies (game)
@@ -297,9 +317,10 @@
   (format stream "~&Jugadores:~t~{~a~^, ~}"
           (loop repeat (size (players game))
                 for p in (slot-value game 'players-round)
-                collecting (if (equal p (name (turn-player game)))
-                             (format nil "-~a-" p)
-                             p)))
+                for n = (name p)
+                collecting (if (equal p (turn-player game))
+                             (format nil "-~a-" n)
+                             n)))
   (format stream "~&Etapa:~t~a" (state game))
   (if (pending-armies game)
     (format stream "~&Ejércitos pendientes:~t~a" (pending-armies game)))
