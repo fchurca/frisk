@@ -19,13 +19,15 @@
 
 (defclass* game ()
   ((game-map nil r)
-   (players nil r)
    (fsm nil)
+   (players (make-hash-table :test 'equalp) r)
    (players-round nil)
    (turn-player nil)
    (pending-armies nil r)))
 
-(defmethod initialize-instance ((game game) &key game-map players)
+(defmethod initialize-instance :after ((game game) &rest rest
+                                                   &key game-map players)
+  (declare (ignorable rest))
   (with-slots ((the-game-map game-map)
                (the-players players)
                (the-players-round players-round)
@@ -36,14 +38,11 @@
           (typecase game-map
             (game-map game-map)
             (t (read-map game-map))))
-    (setf the-players (make-hash-table :test 'equalp))
-    (setf the-players-round nil)
     (dolist (name players)
       (pushnew (add-player game name) the-players-round))
     (setf the-players-round (reverse the-players-round))
     (nconc the-players-round the-players-round)
     (setf the-turn-player the-players-round)
-    (setf the-pending-armies nil)
     (setf the-fsm
           (flet
             ((pass-placing (fsm old-armies new-state
@@ -67,22 +66,26 @@
                         (switch fsm :placing-twice-n)))
                 :placing-twice-n
                 (:place ((fsm where amount)
+                         (declare (ignorable fsm))
                          (place-armies game where amount))
                  :done ((fsm)
                         (pass-placing fsm 10 :placing-n 5)))
                 :placing-n
                 (:place ((fsm where amount)
+                         (declare (ignorable fsm))
                          (place-armies game where amount))
                  :done ((fsm)
                         (pass-placing fsm 5 :attacking)
                         (reset-movable-armies game)))
                 :attacking
                 (:attack ((fsm from to)
+                          (declare (ignorable fsm))
                           (attack game from to))
                  :done ((fsm)
                         (switch fsm :regrouping)))
                 :regrouping
                 (:move ((fsm from to amount)
+                        (declare (ignorable fsm))
                         (move-armies game from to amount))
                  :done ((fsm)
                         (switch fsm
@@ -93,6 +96,7 @@
                             :attacking))))
                 :placing
                 (:place ((fsm where amount)
+                         (declare (ignorable fsm))
                          (place-armies game where amount))
                  :done ((fsm)
                         (pass-placing fsm
@@ -250,7 +254,7 @@
        (error "Los territorios deben ser divisibles entre los jugadores"))
      (loop
        with territories = (shuffle (territory-keys game))
-       for player in (slot-value *game* 'players-round)
+       for player in (slot-value game 'players-round)
        for territory in territories do
        (setf (owner (territory game territory)) player)
        (setf (armies (territory game territory)) 1)))))
