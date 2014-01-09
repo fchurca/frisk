@@ -66,26 +66,22 @@
                         (switch fsm :placing-twice-n)))
                 :placing-twice-n
                 (:place ((fsm where amount)
-                         (declare (ignorable fsm))
                          (place-armies game where amount))
                  :done ((fsm)
                         (pass-placing fsm 10 :placing-n 5)))
                 :placing-n
                 (:place ((fsm where amount)
-                         (declare (ignorable fsm))
                          (place-armies game where amount))
                  :done ((fsm)
                         (pass-placing fsm 5 :attacking)
                         (reset-movable-armies game)))
                 :attacking
                 (:attack ((fsm from to)
-                          (declare (ignorable fsm))
                           (attack game from to))
                  :done ((fsm)
                         (switch fsm :regrouping)))
                 :regrouping
                 (:move ((fsm from to amount)
-                        (declare (ignorable fsm))
                         (move-armies game from to amount))
                  :done ((fsm)
                         (switch fsm
@@ -96,7 +92,6 @@
                             :attacking))))
                 :placing
                 (:place ((fsm where amount)
-                         (declare (ignorable fsm))
                          (place-armies game where amount))
                  :done ((fsm)
                         (pass-placing fsm

@@ -44,9 +44,16 @@
                `(,name
                   (list
                     ,@(loop for (message spec) on spec by #'cddr appending
-                            `(,message ,(if (listp spec)
-                                          (cons 'lambda spec)
-                                          spec)))))))
+                            `(,message
+                               ,(if (listp spec)
+                                  (destructuring-bind
+                                    ((&whole params fsm &rest rest) &body body)
+                                    spec
+                                    (declare (ignore rest))
+                                    `(lambda ,params
+                                       (declare (ignorable ,fsm))
+                                       ,@body))
+                                  spec)))))))
      :state ,initial-state))
 
 (defgeneric switch (fsm state)
