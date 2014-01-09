@@ -3,14 +3,14 @@ Common Lisp implementation of a Risk-like board game.
 Tentative waypoints
   * Basic API
   * "One-seat" CLI
-  * Web frontend? (with [Restas][http://restas.lisper.ru/en/]?)
+  * Web frontend? (with [Restas](http://restas.lisper.ru/en/)?)
   * Network server (with CLI?)
   * Network clients
     * CLI?
     * GUI?
 
 USAGE
-  * Make sure you have [Quicklisp][http://www.quicklisp.org/beta/] up and running in your favourite CL implementation. I tested it only on SBCL and CLISP, but I think it's portable enough to work *Everywhere™*.
+  * Make sure you have [Quicklisp](http://www.quicklisp.org/beta/) up and running in your favourite CL implementation. I tested it only on SBCL and CLISP, but I think it's portable enough to work *Everywhere™*.
   * Clone the repo inside your local-projects dir:
 `cd ~/quicklisp/local-projects/`
 `git clone https://github.com/fchurca/frisk.git`
