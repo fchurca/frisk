@@ -11,7 +11,8 @@
 
 (defclass* game-map ()
   ((territories (error "Debe especificar los territorios") ir)
-   (frontiers (error "Debe especificar las fronteras") ir)))
+   (frontiers (error "Debe especificar las fronteras") ir)
+   (initial-armies (error "Debe especificar los ejércitos iniciales") ir)))
 
 (defclass* player ()
   ((name (error "Debe ingresar el nombre del jugador") ir)
@@ -58,22 +59,25 @@
                                      new-armies)
                                    old-armies)))
              (placeable-armies ()
-               (placeable-armies (turn-player game))))
+               (placeable-armies (turn-player game)))
+             (initial-armies () (initial-armies game))
+             (2-initial-armies () (* 2 (initial-armies game))))
             (make-fsm
               (:setup
                 (:done ((fsm)
-                        (setf the-pending-armies 10)
+                        (setf the-pending-armies (2-initial-armies))
                         (switch fsm :placing-twice-n)))
                 :placing-twice-n
                 (:place ((fsm where amount)
                          (place-armies game where amount))
                  :done ((fsm)
-                        (pass-placing fsm 10 :placing-n 5)))
+                        (pass-placing fsm (2-initial-armies)
+                                      :placing-n (initial-armies))))
                 :placing-n
                 (:place ((fsm where amount)
                          (place-armies game where amount))
                  :done ((fsm)
-                        (pass-placing fsm 5 :attacking)
+                        (pass-placing fsm (initial-armies) :attacking)
                         (reset-movable-armies game)))
                 :attacking
                 (:attack ((fsm from to)
@@ -102,7 +106,8 @@
 (defgeneric read-map (file)
   (:method ((list list))
    (let* ((territories (make-hash-table :test 'equalp))
-          (frontiers (make-container 'graph-container)))
+          (frontiers (make-container 'graph-container))
+          (initial-armies (getf list :initial-armies)))
      (dolist (territory (getf list :territories))
        (destructuring-bind (key name extra-armies terr-frontiers) territory
          (add-vertex frontiers key)
@@ -112,7 +117,10 @@
                               :extra-armies extra-armies))
          (dolist (frontierkey terr-frontiers)
            (add-edge-between-vertexes frontiers key frontierkey))))
-     (make-instance 'game-map :territories territories :frontiers frontiers)))
+     (make-instance 'game-map
+                    :territories territories
+                    :frontiers frontiers
+                    :initial-armies initial-armies)))
 
   (:method ((file stream))
    (let* ((*read-eval* nil))
@@ -186,6 +194,10 @@
        (pass-head game)
        (rotate-turn game))
      is-head-player)))
+
+(defmethod initial-armies ((game game))
+  (cadr (assoc (length (player-keys game))
+               (initial-armies (game-map game)))))
 
 (defmethod territories ((game game))
   (territories (game-map game)))
