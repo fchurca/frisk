@@ -63,7 +63,16 @@
              (initial-armies () (initial-armies game))
              (2-initial-armies () (* 2 (initial-armies game))))
             (make-fsm
-              (:setup
+              (:claiming
+                (:claim ((fsm territory)
+                         (claim game territory)
+                         (rotate-turn game)
+                         (send game :done))
+                 :done ((fsm)
+                        (if (every (lambda (k) (owner (territory game k)))
+                                   (territory-keys game))
+                          (switch fsm :setup))))
+               :setup
                 (:done ((fsm)
                         (setf the-pending-armies (2-initial-armies))
                         (switch fsm :placing-twice-n)))
@@ -101,7 +110,7 @@
                         (pass-placing fsm
                                       (placeable-armies) :placing-n nil t)
                         (reset-movable-armies game))))
-              :setup)))))
+              :claiming)))))
 
 (defgeneric read-map (file)
   (:method ((list list))
@@ -265,6 +274,14 @@
        for territory in territories do
        (setf (owner (territory game territory)) player)
        (setf (armies (territory game territory)) 1)))))
+
+(defgeneric claim (game territory)
+  (:method ((game game) territory-key)
+   (let ((territory (territory game territory-key)))
+     (when (owner territory)
+       (error "El territorio ya tiene dueño"))
+     (setf (owner territory) (turn-player game))
+     (setf (armies territory) 1))))
 
 (defgeneric reset-movable-armies (game)
   (:method ((game game))
