@@ -20,11 +20,11 @@
 
 (defclass* game ()
   ((game-map nil r)
-   (fsm nil)
+   (fsm nil r)
    (players (make-hash-table :test 'equalp) r)
-   (players-round nil)
+   (players-round nil a)
    (turn-player nil)
-   (pending-armies nil r)))
+   (pending-armies nil a)))
 
 (defmethod initialize-instance :after ((game game) &rest rest
                                                    &key game-map players)
@@ -48,7 +48,7 @@
           (flet
             ((pass-placing (fsm old-armies new-state
                                 &optional new-armies playing)
-                           (when (> the-pending-armies 0)
+                           (when (plusp the-pending-armies)
                              (error "No se pusieron todos los ejércitos"))
                            (setf the-pending-armies
                                  (if (if playing
@@ -132,7 +132,7 @@
                     :initial-armies initial-armies)))
 
   (:method ((file stream))
-   (let* ((*read-eval* nil))
+   (let ((*read-eval* nil))
      (read-map (read file))))
 
   (:method ((path pathname))
@@ -180,7 +180,7 @@
 
 (defgeneric head-player (game)
   (:method ((game game))
-   (car (slot-value game 'players-round))))
+   (car (players-round game))))
 
 (defgeneric turn-player (game)
   (:method ((game game))
@@ -188,7 +188,7 @@
 
 (defgeneric pass-head (game)
   (:method ((game game))
-   (pop (slot-value game 'players-round))
+   (pop (players-round game))
    (head-player game)))
 
 (defgeneric rotate-turn (game)
@@ -227,7 +227,7 @@
    (hash-table-keys (players game))))
 
 (defmethod state ((game game))
-  (state (slot-value game 'fsm)))
+  (state (fsm game)))
 
 (defmethod armies ((player player))
   (loop for territory being the hash-values in (territories (game player))
@@ -270,7 +270,7 @@
        (error "Los territorios deben ser divisibles entre los jugadores"))
      (loop
        with territories = (shuffle (territory-keys game))
-       for player in (slot-value game 'players-round)
+       for player in (players-round game)
        for territory in territories do
        (setf (owner (territory game territory)) player)
        (setf (armies (territory game territory)) 1)))))
@@ -298,7 +298,7 @@
        (error "Los territorios deben estar conectados"))
      (unless (eq (owner origin) (owner destination))
        (error "Los territorios tienen que tener el mismo dueño"))
-     (unless (> amount 0)
+     (unless (plusp amount)
        (error "No se pueden mover 0 o menos ejércitos"))
      (unless (>= (movable-armies origin) amount)
        (error "No hay suficientes ejércitos"))
@@ -311,11 +311,11 @@
    (let ((territory (territory game territory-key)))
      (unless (eq (owner territory) (turn-player game))
        (error "El territorio debe pertenecer al jugador de turno"))
-     (unless (> amount 0)
+     (unless (plusp amount)
        (error "No se pueden poner 0 o menos ejércitos"))
      (unless (<= amount (pending-armies game))
        (error "No quedan tantos ejércitos por poner"))
-     (decf (slot-value game 'pending-armies) amount)   
+     (decf (pending-armies game) amount)   
      (incf (armies territory) amount))))
 
 (defgeneric attack (game from to)
@@ -344,7 +344,7 @@
 (defmethod print-object ((game game) stream)
   (format stream "~&Jugadores:~t~{~a~^, ~}"
           (loop repeat (size (players game))
-                for p in (slot-value game 'players-round)
+                for p in (players-round game)
                 for n = (name p)
                 collecting (if (equal p (turn-player game))
                              (format nil "-~a-" n)
