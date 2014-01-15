@@ -1,7 +1,7 @@
 (:territories (
-               (:argentina "Argentina" 1 ())
-               (:peru "Perú" 3 (:argentina))
-               (:brazil "Brazil" 2 (:argentina :peru))
-               (:venezuela "Venezuela" 4 (:peru :brazil)))
+               (argentina "Argentina" 1 ())
+               (peru "Perú" 3 (argentina))
+               (brazil "Brazil" 2 (argentina peru))
+               (venezuela "Venezuela" 4 (peru brazil)))
  :initial-armies ((2 4) (4 1)))
 
