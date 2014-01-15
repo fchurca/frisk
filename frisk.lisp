@@ -147,17 +147,20 @@
 
 (defgeneric read-game (file)
   (:method ((list list))
-   (let ((game (make-instance 'game
-                              :game-map (read-map (getf list :game-map))
-                              :players (getf list :players)))
-         (state (getf list :state))
-         (pending-armies (getf list :pending-armies)))
+   (let* ((game (make-instance 'game
+                               :game-map (read-map (getf list :game-map))
+                               :players (getf list :players)))
+          (state (getf list :state))
+          (pending-armies (getf list :pending-armies))
+          (turn-player (player game (getf list :turn))))
      (loop for (name armies-dist) on (getf list :armies) by #'cddr do
            (loop for (territory-key armies) on armies-dist by #'cddr
                  for territory = (territory game territory-key) do
                  (setf (owner territory) (player game name))
                  (setf (armies territory) armies)))
      (when state (switch (game-fsm game) state))
+     (when turn-player
+       (loop until (eq (turn-player game) turn-player) do (rotate-turn game)))
      (when pending-armies (setf (slot-value game 'pending-armies) pending-armies))
      ; TODO: signal error on uninitialized territories if playing
      game))
