@@ -20,7 +20,7 @@
 
 (defclass* game ()
   ((game-map nil r)
-   (fsm nil r)
+   (game-fsm nil r)
    (players (make-hash-table :test 'equalp) r)
    (players-round nil a)
    (turn-player nil)
@@ -33,7 +33,7 @@
                (the-players players)
                (the-players-round players-round)
                (the-turn-player turn-player)
-               (the-fsm fsm)
+               (the-fsm game-fsm)
                (the-pending-armies pending-armies)) game
     (setf the-game-map
           (typecase game-map
@@ -147,15 +147,24 @@
 
 (defgeneric read-game (file)
   (:method ((list list))
-   (let ((game (make-instance 'game
-                              :game-map (read-map (getf list :game-map))
-                              :players (getf list :players))))
+   (let* ((game (make-instance 'game
+                               :game-map (read-map (getf list :game-map))
+                               :players (getf list :players)))
+          (state (getf list :state))
+          (pending-armies (getf list :pending-armies))
+          (turn-player (player game (getf list :turn))))
      (loop for (name armies-dist) on (getf list :armies) by #'cddr do
            (loop for (territory-key armies) on armies-dist by #'cddr
                  for territory = (territory game territory-key) do
                  (setf (owner territory) (player game name))
                  (setf (armies territory) armies)))
-     ; TODO: signal error on uninitialized territories
+     (when state
+       (reset-movable-armies game)
+       (switch (game-fsm game) state)
+       (when turn-player
+         (loop until (eq (turn-player game) turn-player) do (rotate-turn game)))
+       (when pending-armies (setf (slot-value game 'pending-armies) pending-armies)))
+     ; TODO: signal error on uninitialized territories if playing
      game))
 
   (:method ((file stream))
@@ -227,7 +236,7 @@
    (hash-table-keys (players game))))
 
 (defmethod state ((game game))
-  (state (fsm game)))
+  (state (game-fsm game)))
 
 (defmethod armies ((player player))
   (loop for territory being the hash-values in (territories (game player))
@@ -250,7 +259,7 @@
        (find-vertex graph destination-key)))))
 
 (defmethod send ((game game) message &rest rest)
-  (apply #'send (slot-value game 'fsm) message rest)
+  (apply #'send (game-fsm game) message rest)
   game)
 
 (defgeneric add-player (game name)
@@ -302,8 +311,8 @@
        (error "No se pueden mover 0 o menos ejércitos"))
      (unless (>= (movable-armies origin) amount)
        (error "No hay suficientes ejércitos"))
-     (decf (armies origin) amount)
      (decf (movable-armies origin) amount)
+     (decf (armies origin) amount)
      (incf (armies destination) amount))))
 
 (defgeneric place-armies (game where amount)
