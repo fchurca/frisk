@@ -4,32 +4,32 @@
 (defparameter *fsm*
   (make-fsm
     (
-     :foo (
-           :baz :bar
-           :quz :foo)
-     :bar (
-           :qux ((fsm string)
-                  (print string)
-                  (switch fsm :foo))
-           :quux ((fsm)
-                   t)))
-    :foo))
-;*fsm*
+     foo (
+          baz bar
+          quz foo)
+     bar (
+          qux ((fsm string)
+               (print string)
+               (switch fsm 'foo))
+          quux ((fsm)
+                t)))
+    foo))
+;*FSM*
 (states *fsm*)
-;(:FOO :BAR)
+;(FOO BAR)
 (state *fsm*)
-;:FOO
+;FOO
 (available-messages *fsm*)
-;(:BAZ :QUZ)
-(send *fsm* :quz)
+;(BAZ QUZ)
+(send *fsm* 'quz)
+;FOO
+(send *fsm* 'baz)
+;BAR
+(send *fsm* 'quux)
 ;T
-(send *fsm* :baz)
-;:BAR
-(send *fsm* :quux)
-;T
-(send *fsm* :qux "Hello, world!")
+(send *fsm* 'qux "Hello, world!")
 ;"Hello, world!"
-;:FOO
+;FOO
 |#
 
 (defclass fsm ()
@@ -41,20 +41,19 @@
      'fsm :states
      (list
        ,@(loop for (name spec) on states by #'cddr appending
-               `(,name
-                  (list
-                    ,@(loop for (message spec) on spec by #'cddr appending
-                            `(,message
-                               ,(if (listp spec)
-                                  (destructuring-bind
-                                    ((&whole params fsm &rest rest) &body body)
-                                    spec
-                                    (declare (ignore rest))
-                                    `(lambda ,params
-                                       (declare (ignorable ,fsm))
-                                       ,@body))
-                                  spec)))))))
-     :state ,initial-state))
+               `(',name
+                 (list
+                   ,@(loop for (message spec) on spec by #'cddr appending
+                           `(',message
+                             ,(if (listp spec)
+                                (destructuring-bind
+                                  ((&whole params fsm &rest rest) &body body) spec
+                                  (declare (ignore rest))
+                                  `(lambda ,params
+                                     (declare (ignorable ,fsm))
+                                     ,@body))
+                                `',spec)))))))
+     :state ',initial-state))
 
 (defgeneric switch (fsm state)
   (:method ((fsm fsm) state)
