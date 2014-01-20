@@ -5,9 +5,9 @@
    (extra-armies
      (error "Debe ingresar los ejércitos adicionales del territorio")
      ir)
-   (owner nil a)
-   (armies nil a)
-   (movable-armies nil a)))
+   (%owner nil a :reader owner)
+   (%armies nil a :reader armies)
+   (%movable-armies nil a :reader movable-armies)))
 
 (defclass* game-map ()
   ((territories (error "Debe especificar los territorios") ir)
@@ -22,19 +22,19 @@
   ((game-map nil r)
    (game-fsm nil r)
    (players (make-hash-table :test 'equalp) r)
-   (players-round nil a)
-   (turn-player nil)
-   (pending-armies nil a)))
+   (%players-round nil a)
+   (%turn-player nil a)
+   (%pending-armies nil a :reader pending-armies)))
 
 (defmethod initialize-instance :after ((game game) &rest rest
                                                    &key game-map players)
   (declare (ignorable rest))
   (with-slots ((the-game-map game-map)
                (the-players players)
-               (the-players-round players-round)
-               (the-turn-player turn-player)
+               (the-players-round %players-round)
+               (the-turn-player %turn-player)
                (the-fsm game-fsm)
-               (the-pending-armies pending-armies)) game
+               (the-pending-armies %pending-armies)) game
     (setf the-game-map
           (typecase game-map
             (game-map game-map)
@@ -156,14 +156,14 @@
      (loop for (name armies-dist) on (getf list :armies) by #'cddr do
            (loop for (territory-key armies) on armies-dist by #'cddr
                  for territory = (territory game territory-key) do
-                 (setf (owner territory) (player game name))
-                 (setf (armies territory) armies)))
+                 (setf (%owner territory) (player game name))
+                 (setf (%armies territory) armies)))
      (when state
        (reset-movable-armies game)
        (switch (game-fsm game) state)
        (when turn-player
          (loop until (eq (turn-player game) turn-player) do (rotate-turn game)))
-       (when pending-armies (setf (slot-value game 'pending-armies) pending-armies)))
+       (when pending-armies (setf (%pending-armies game) pending-armies)))
      ; TODO: signal error on uninitialized territories if playing
      game))
 
@@ -189,20 +189,20 @@
 
 (defgeneric head-player (game)
   (:method ((game game))
-   (car (players-round game))))
+   (car (%players-round game))))
 
 (defgeneric turn-player (game)
   (:method ((game game))
-   (car (slot-value game 'turn-player))))
+   (car (%turn-player game))))
 
 (defgeneric pass-head (game)
   (:method ((game game))
-   (pop (players-round game))
+   (pop (%players-round game))
    (head-player game)))
 
 (defgeneric rotate-turn (game)
   (:method ((game game))
-   (pop (slot-value game 'turn-player))
+   (pop (%turn-player game))
    (eq (turn-player game) (head-player game))))
 
 (defgeneric pass-turn (game)
@@ -279,23 +279,23 @@
        (error "Los territorios deben ser divisibles entre los jugadores"))
      (loop
        with territories = (shuffle (territory-keys game))
-       for player in (players-round game)
+       for player in (%players-round game)
        for territory in territories do
-       (setf (owner (territory game territory)) player)
-       (setf (armies (territory game territory)) 1)))))
+       (setf (%owner (territory game territory)) player)
+       (setf (%armies (territory game territory)) 1)))))
 
 (defgeneric claim (game territory)
   (:method ((game game) territory-key)
    (let ((territory (territory game territory-key)))
      (when (owner territory)
        (error "El territorio ya tiene dueño"))
-     (setf (owner territory) (turn-player game))
-     (setf (armies territory) 1))))
+     (setf (%owner territory) (turn-player game))
+     (setf (%armies territory) 1))))
 
 (defgeneric reset-movable-armies (game)
   (:method ((game game))
    (loop for territory being the hash-values in (territories game) do
-         (setf (movable-armies territory) (armies territory)))))
+         (setf (%movable-armies territory) (armies territory)))))
 
 (defgeneric move-armies (game from to amount)
   (:method ((game game) origin-key destination-key amount)
@@ -311,9 +311,9 @@
        (error "No se pueden mover 0 o menos ejércitos"))
      (unless (>= (movable-armies origin) amount)
        (error "No hay suficientes ejércitos"))
-     (decf (movable-armies origin) amount)
-     (decf (armies origin) amount)
-     (incf (armies destination) amount))))
+     (decf (%movable-armies origin) amount)
+     (decf (%armies origin) amount)
+     (incf (%armies destination) amount))))
 
 (defgeneric place-armies (game where amount)
   (:method ((game game) territory-key (amount integer))
@@ -324,16 +324,16 @@
        (error "No se pueden poner 0 o menos ejércitos"))
      (unless (<= amount (pending-armies game))
        (error "No quedan tantos ejércitos por poner"))
-     (decf (pending-armies game) amount)   
-     (incf (armies territory) amount))))
+     (decf (%pending-armies game) amount)
+     (incf (%armies territory) amount))))
 
 (defgeneric attack (game from to)
   (:method ((game game) origin-key destination-key)
    (symbol-macrolet
      ((origin (territory game origin-key))
       (destination (territory game destination-key))
-      (attackers (armies origin))
-      (defenders (armies destination)))
+      (attackers (%armies origin))
+      (defenders (%armies destination)))
      (unless (eq (owner origin) (turn-player game))
        (error "El territorio origen debe pertenecer al jugador de turno"))
      (unless (territories-connected-p game origin-key destination-key)
@@ -346,14 +346,14 @@
        (decf attackers (random decrement))
        (decf defenders (random decrement))
        (when (= defenders 0)
-         (setf (owner destination) (owner origin))
+         (setf (%owner destination) (owner origin))
          (move-armies game origin-key destination-key 1)))
      (eq (owner origin) (owner destination)))))
 
 (defmethod print-object ((game game) stream)
   (format stream "~&Jugadores:~t~{~a~^, ~}"
           (loop repeat (size (players game))
-                for p in (players-round game)
+                for p in (%players-round game)
                 for n = (name p)
                 collecting (if (equal p (turn-player game))
                              (format nil "-~a-" n)
