@@ -52,8 +52,8 @@
                              (error "No se pusieron todos los ejércitos"))
                            (setf the-pending-armies
                                  (if (if playing
-                                       (pass-turn game)
-                                       (rotate-turn game))
+                                       (%pass-turn game)
+                                       (%rotate-turn game))
                                    (progn
                                      (switch fsm new-state)
                                      new-armies)
@@ -66,7 +66,7 @@
               (:claiming
                 (:claim ((fsm territory)
                          (claim game territory)
-                         (rotate-turn game)
+                         (%rotate-turn game)
                          (send game :done))
                  :done ((fsm)
                         (if (every (lambda (k) (owner (territory game k)))
@@ -98,7 +98,7 @@
                         (move-armies game from to amount))
                  :done ((fsm)
                         (switch fsm
-                          (if (pass-turn game)
+                          (if (%pass-turn game)
                             (progn
                               (setf the-pending-armies (placeable-armies))
                               :placing)
@@ -162,7 +162,7 @@
        (reset-movable-armies game)
        (switch (game-fsm game) state)
        (when turn-player
-         (loop until (eq (turn-player game) turn-player) do (rotate-turn game)))
+         (loop until (eq (turn-player game) turn-player) do (%rotate-turn game)))
        (when pending-armies (setf (%pending-armies game) pending-armies)))
      ; TODO: signal error on uninitialized territories if playing
      game))
@@ -195,22 +195,22 @@
   (:method ((game game))
    (car (%turn-player game))))
 
-(defgeneric pass-head (game)
+(defgeneric %pass-head (game)
   (:method ((game game))
    (pop (%players-round game))
    (head-player game)))
 
-(defgeneric rotate-turn (game)
+(defgeneric %rotate-turn (game)
   (:method ((game game))
    (pop (%turn-player game))
    (eq (turn-player game) (head-player game))))
 
-(defgeneric pass-turn (game)
+(defgeneric %pass-turn (game)
   (:method ((game game))
-   (let ((is-head-player (rotate-turn game)))
+   (let ((is-head-player (%rotate-turn game)))
      (when is-head-player
-       (pass-head game)
-       (rotate-turn game))
+       (%pass-head game)
+       (%rotate-turn game))
      is-head-player)))
 
 (defmethod initial-armies ((game game))
@@ -362,9 +362,10 @@
   (if (pending-armies game)
     (format stream "~&Ejércitos pendientes:~t~a" (pending-armies game)))
   (format stream "~&Territorios:")
-  (loop for v being the hash-values in (territories game) do
-        (format stream "~&~t~a~&~t~tDueño:~t~t~a~&~t~tEjércitos:~t~t~a"
-                (name v)
-                (if (owner v) (name (owner v)) "Ninguno")
-                (if (armies v) (armies v) "Ninguno"))))
+  (loop for v being the hash-values in (territories game)
+        using (hash-key k) do
+        (format stream "~& ~a~23t~a~37tDueño: ~a~55tEjércitos: ~a"
+                (name v) k
+                (if (owner v) (name (owner v)) "-")
+                (if (armies v) (armies v) "-"))))
 
