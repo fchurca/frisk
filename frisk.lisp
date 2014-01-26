@@ -29,12 +29,31 @@
 (defmethod initialize-instance :after ((game game) &rest rest
                                                    &key game-map players)
   (declare (ignorable rest))
-  (with-slots ((the-game-map game-map)
-               (the-players players)
-               (the-players-round %players-round)
-               (the-turn-player %turn-player)
-               (the-fsm game-fsm)
-               (the-pending-armies %pending-armies)) game
+  (bind (((:slots
+            (the-game-map game-map)
+            (the-players players)
+            (the-players-round %players-round)
+            (the-turn-player %turn-player)
+            (the-fsm game-fsm)
+            (the-pending-armies %pending-armies)) game)
+          ((:flet _switch (state)) (switch the-fsm state))
+          ((:flet _rotate-turn ()) (%rotate-turn game))
+          ((:flet _reset-movable-armies ()) (%reset-movable-armies game))
+          ((:flet _place-armies (where amount))
+           (%place-armies game where amount))
+          ((:flet pass-placing (old-armies new-state &optional new-armies))
+           (when (plusp the-pending-armies)
+             (error "No se pusieron todos los ejércitos"))
+           (setf the-pending-armies
+                 (if (_rotate-turn)
+                   (progn
+                     (_switch new-state)
+                     new-armies)
+                   old-armies)))
+          ((:flet _placeable-armies ())
+           (placeable-armies (turn-player game)))
+          ((:flet _initial-armies ()) (initial-armies game))
+          ((:flet 2-initial-armies ()) (* 2 (initial-armies game))))
     (setf the-game-map
           (typecase game-map
             (game-map game-map)
@@ -47,77 +66,61 @@
     (nconc the-players-round the-players-round)
     (setf the-turn-player the-players-round)
     (setf the-fsm
-          (flet
-            ((pass-placing (fsm old-armies new-state
-                                &optional new-armies)
-                           (when (plusp the-pending-armies)
-                             (error "No se pusieron todos los ejércitos"))
-                           (setf the-pending-armies
-                                 (if (%rotate-turn game)
-                                   (progn
-                                     (switch fsm new-state)
-                                     new-armies)
-                                   old-armies)))
-             (placeable-armies ()
-               (placeable-armies (turn-player game)))
-             (initial-armies () (initial-armies game))
-             (2-initial-armies () (* 2 (initial-armies game))))
-            (make-fsm
-              (:claiming
-                (:claim ((fsm territory)
-                         (%claim game territory)
-                         (%rotate-turn game)
-                         (send game :done))
-                 :done ((fsm)
-                        (if (every (lambda (k) (owner (territory game k)))
-                                   (territory-keys game))
-                          (switch fsm :setup))))
-                :setup
-                (:done ((fsm)
-                        (setf the-pending-armies (2-initial-armies))
-                        (switch fsm :placing-twice-n)))
-                :placing-twice-n
-                (:place ((fsm where amount)
-                         (%place-armies game where amount))
-                 :done ((fsm)
-                        (pass-placing fsm (2-initial-armies)
-                                      :placing-n (initial-armies))))
-                :placing-n
-                (:place ((fsm where amount)
-                         (%place-armies game where amount))
-                 :done ((fsm)
-                        (pass-placing fsm (initial-armies) :attacking)
-                        (%reset-movable-armies game)))
-                :attacking
-                (:attack ((fsm from to)
-                          (%attack game from to))
-                 :done ((fsm)
-                        (switch fsm :regrouping)))
-                :regrouping
-                (:move-armies ((fsm from to amount)
-                               (%move-armies game from to amount))
-                 :done ((fsm)
-                        (switch fsm
-                                (if (%pass-turn game)
-                                  (progn
-                                    (setf the-pending-armies
-                                          (placeable-armies))
-                                    :placing)
-                                  :attacking))))
-                :placing
-                (:place ((fsm where amount)
-                         (%place-armies game where amount))
-                 :done ((fsm)
-                        (when (plusp the-pending-armies)
-                          (error "No se pusieron todos los ejércitos"))
-                        (setf the-pending-armies
-                              (if (%rotate-turn game)
-                                (progn
-                                  (%reset-movable-armies game)
-                                  (switch fsm :attacking)
-                                  nil)
-                                (placeable-armies))))))
-              :claiming)))))
+          (make-fsm
+            (:claiming
+              (:claim ((fsm territory)
+                       (%claim game territory)
+                       (_rotate-turn)
+                       (done game))
+               :done ((fsm)
+                      (if (every (lambda (k) (owner (territory game k)))
+                                 (territory-keys game))
+                        (_switch :setup))))
+              :setup
+              (:done ((fsm)
+                      (setf the-pending-armies (2-initial-armies))
+                      (_switch :placing-twice-n)))
+              :placing-twice-n
+              (:place-armies ((fsm where amount)
+                              (_place-armies where amount))
+               :done ((fsm)
+                      (pass-placing (2-initial-armies)
+                                    :placing-n (_initial-armies))))
+              :placing-n
+              (:place-armies ((fsm where amount)
+                              (_place-armies where amount))
+               :done ((fsm)
+                      (pass-placing (_initial-armies) :attacking)
+                      (_reset-movable-armies)))
+              :attacking
+              (:attack ((fsm from to)
+                        (%attack game from to))
+               :done ((fsm)
+                      (_switch :regrouping)))
+              :regrouping
+              (:move-armies ((fsm from to amount)
+                             (%move-armies game from to amount))
+               :done ((fsm)
+                      (_switch
+                        (if (%pass-turn game)
+                          (progn
+                            (setf the-pending-armies (_placeable-armies))
+                            :placing)
+                          :attacking))))
+              :placing
+              (:place-armies ((fsm where amount)
+                              (_place-armies where amount))
+               :done ((fsm)
+                      (when (plusp the-pending-armies)
+                        (error "no se pusieron todos los ejércitos"))
+                      (setf the-pending-armies
+                            (if (_rotate-turn)
+                              (progn
+                                (_reset-movable-armies)
+                                (_switch :attacking)
+                                nil)
+                              (_placeable-armies))))))
+            :claiming))))
 
 (defgeneric read-map (file)
   (:method ((list list))
@@ -172,7 +175,7 @@
          (loop until (eq (turn-player game) turn-player)
                do (%rotate-turn game)))
        (when pending-armies (setf (%pending-armies game) pending-armies)))
-     ; TODO: signal error on uninitialized territories if playing
+     ; todo: signal error on uninitialized territories if playing
      game))
 
   (:method ((file stream))
@@ -258,8 +261,8 @@
 (defmethod done ((game game))
   (send game :done))
 
-(defmethod place ((game game) where amount)
-  (send game :place where amount))
+(defmethod place-armies ((game game) where amount)
+  (send game :place-armies where amount))
 
 (defmethod attack ((game game) from to)
   (send game :attack from to))

@@ -1,7 +1,8 @@
 (defpackage :ar.com.fchurca.frisk
   (:use :common-lisp
         :cl-graph
-        :cl-containers)
+        :cl-containers
+        :metabang-bind)
   (:import-from :metatilities :defclass*)
   (:import-from :alexandria :shuffle :hash-table-keys)
   (:export
@@ -31,7 +32,7 @@
     :read-game
     :claim
     :done
-    :place
+    :place-armies
     :attack
     :move-armies
     :territory-keys ; These two are
