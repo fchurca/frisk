@@ -269,6 +269,21 @@
   (apply #'send (game-fsm game) message rest)
   game)
 
+(defmethod claim ((game game) territory)
+  (send game :claim territory))
+
+(defmethod done ((game game))
+  (send game :done))
+
+(defmethod place ((game game) where amount)
+  (send game :place where amount))
+
+(defmethod attack ((game game) from to)
+  (send game :attack from to))
+
+(defmethod move-armies ((game game) from to amount)
+  (send game :move from to amount))
+
 (defgeneric shuffle-territories (game)
   (:method ((game game))
    (let ((territory-count (size (territories game)))

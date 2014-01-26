@@ -29,13 +29,14 @@
     ; Functions and methods and such, oh my!
     :read-map
     :read-game
+    :claim
+    :done
+    :place
+    :attack
+    :move-armies
     :territory-keys ; These two are
     :player-keys    ; kinda-accessor-ish 
     :territories-connected-p
-    :add-player
     :shuffle-territories
-    :move-armies
-    :place-armies
-    :attack
     :print-game))
 
