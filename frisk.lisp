@@ -157,13 +157,12 @@
 
 (defgeneric read-game (file)
   (:method ((list list))
-   (let* ((game (make-instance 'game
-                               :game-map (read-map (getf list :game-map))
-                               :players (getf list :players)))
-          (state (getf list :state))
-          (pending-armies (getf list :pending-armies))
-          (turn-player (player game (getf list :turn))))
-     (loop for (name armies-dist) on (getf list :armies) by #'cddr do
+   (bind (((:plist turn state pending-armies game-map players armies) list)
+          (game (make-instance 'game
+                               :game-map (read-map game-map)
+                               :players players))
+          (turn-player (player game turn)))
+     (loop for (name armies-dist) on armies by #'cddr do
            (loop for (territory-key armies) on armies-dist by #'cddr
                  for territory = (territory game territory-key) do
                  (setf (%owner territory) (player game name))
