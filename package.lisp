@@ -11,6 +11,7 @@
     :switch
     :states
     :available-messages
+    :send
     ; Classes
     :territory
     :game-map

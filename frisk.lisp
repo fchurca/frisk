@@ -49,13 +49,11 @@
     (setf the-fsm
           (flet
             ((pass-placing (fsm old-armies new-state
-                                &optional new-armies playing)
+                                &optional new-armies)
                            (when (plusp the-pending-armies)
                              (error "No se pusieron todos los ejércitos"))
                            (setf the-pending-armies
-                                 (if (if playing
-                                       (%pass-turn game)
-                                       (%rotate-turn game))
+                                 (if (%rotate-turn game)
                                    (progn
                                      (switch fsm new-state)
                                      new-armies)
@@ -109,9 +107,15 @@
                 (:place ((fsm where amount)
                          (%place-armies game where amount))
                  :done ((fsm)
-                        (pass-placing fsm
-                                      (placeable-armies) :placing-n nil t)
-                        (%reset-movable-armies game))))
+                        (when (plusp the-pending-armies)
+                          (error "No se pusieron todos los ejércitos"))
+                        (setf the-pending-armies
+                              (if (%rotate-turn game)
+                                (progn
+                                  (%reset-movable-armies game)
+                                  (switch fsm :attacking)
+                                  nil)
+                                (placeable-armies))))))
               :claiming)))))
 
 (defgeneric read-map (file)
