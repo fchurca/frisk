@@ -1,0 +1,9 @@
+(:territories (
+               (america-s "South America" nil ())
+               (america-n "North America" nil (america-s))
+               (africa "Africa" nil (america-s))
+               (europe "Europe" nil (america-n africa))
+               (asia "Asia" nil (america-n europe africa))
+               (oceania "Oceania" nil (asia)))
+ :initial-armies ((2 3) (3 2)))
+
