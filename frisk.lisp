@@ -1,7 +1,7 @@
 (in-package :ar.com.fchurca.frisk)
 
 (defclass* territory ()
-  ((name (error "Debe ingresar el nombre del territorio") ir)
+  ((territory-name (error "Debe ingresar el nombre del territorio") ir)
    (extra-armies
      (error "Debe ingresar los ejércitos adicionales del territorio")
      ir)
@@ -15,13 +15,13 @@
    (initial-armies (error "Debe especificar los ejércitos iniciales") ir)))
 
 (defclass* player ()
-  ((name (error "Debe ingresar el nombre del jugador") ir)
+  ((player-name (error "Debe ingresar el nombre del jugador") ir)
    (game (error "Debe especificar el juego vinculado al jugador") ir)))
 
 (defclass* game ()
   ((game-map nil r)
    (game-fsm nil r)
-   (players (make-hash-table :test 'equalp) r)
+   (%players (make-hash-table :test 'equalp) r)
    (%players-round nil a)
    (%turn-player nil a)
    (%pending-armies nil a :reader pending-armies)))
@@ -40,7 +40,9 @@
             (game-map game-map)
             (t (read-map game-map))))
     (dolist (name players)
-      (pushnew (add-player game name) the-players-round))
+      (pushnew (setf (gethash name (%players game))
+                     (make-instance 'player :player-name name :game game))
+               the-players-round))
     (setf the-players-round (reverse the-players-round))
     (nconc the-players-round the-players-round)
     (setf the-turn-player the-players-round)
@@ -65,7 +67,7 @@
             (make-fsm
               (:claiming
                 (:claim ((fsm territory)
-                         (claim game territory)
+                         (%claim game territory)
                          (%rotate-turn game)
                          (send game :done))
                  :done ((fsm)
@@ -78,24 +80,24 @@
                         (switch fsm :placing-twice-n)))
                 :placing-twice-n
                 (:place ((fsm where amount)
-                         (place-armies game where amount))
+                         (%place-armies game where amount))
                  :done ((fsm)
                         (pass-placing fsm (2-initial-armies)
                                       :placing-n (initial-armies))))
                 :placing-n
                 (:place ((fsm where amount)
-                         (place-armies game where amount))
+                         (%place-armies game where amount))
                  :done ((fsm)
                         (pass-placing fsm (initial-armies) :attacking)
-                        (reset-movable-armies game)))
+                        (%reset-movable-armies game)))
                 :attacking
                 (:attack ((fsm from to)
-                          (attack game from to))
+                          (%attack game from to))
                  :done ((fsm)
                         (switch fsm :regrouping)))
                 :regrouping
                 (:move ((fsm from to amount)
-                        (move-armies game from to amount))
+                        (%move-armies game from to amount))
                  :done ((fsm)
                         (switch fsm
                           (if (%pass-turn game)
@@ -105,11 +107,11 @@
                             :attacking))))
                 :placing
                 (:place ((fsm where amount)
-                         (place-armies game where amount))
+                         (%place-armies game where amount))
                  :done ((fsm)
                         (pass-placing fsm
                                       (placeable-armies) :placing-n nil t)
-                        (reset-movable-armies game))))
+                        (%reset-movable-armies game))))
               :claiming)))))
 
 (defgeneric read-map (file)
@@ -122,7 +124,7 @@
          (add-vertex frontiers key)
          (setf (gethash key territories)
                (make-instance 'territory
-                              :name name
+                              :territory-name name
                               :extra-armies extra-armies))
          (dolist (frontierkey terr-frontiers)
            (add-edge-between-vertexes frontiers key frontierkey))))
@@ -159,10 +161,11 @@
                  (setf (%owner territory) (player game name))
                  (setf (%armies territory) armies)))
      (when state
-       (reset-movable-armies game)
+       (%reset-movable-armies game)
        (switch (game-fsm game) state)
        (when turn-player
-         (loop until (eq (turn-player game) turn-player) do (%rotate-turn game)))
+         (loop until (eq (turn-player game) turn-player)
+               do (%rotate-turn game)))
        (when pending-armies (setf (%pending-armies game) pending-armies)))
      ; TODO: signal error on uninitialized territories if playing
      game))
@@ -225,7 +228,7 @@
 
 (defgeneric player (game player-key)
   (:method ((game game) player-key)
-   (gethash player-key (players game))))
+   (gethash player-key (%players game))))
 
 (defgeneric territory-keys (game)
   (:method ((game game))
@@ -233,7 +236,7 @@
 
 (defgeneric player-keys (game)
   (:method ((game game))
-   (hash-table-keys (players game))))
+   (hash-table-keys (%players game))))
 
 (defmethod state ((game game))
   (state (game-fsm game)))
@@ -249,7 +252,7 @@
 
 (defgeneric placeable-armies (player)
   (:method ((player player))
-   (values (ceiling (/ (armies player) 2)))))
+   (values (ceiling (/ (territories player) 2)))))
 
 (defgeneric territories-connected-p (game origin-key destination-key)
   (:method ((game game) origin-key destination-key)
@@ -262,15 +265,10 @@
   (apply #'send (game-fsm game) message rest)
   game)
 
-(defgeneric add-player (game name)
-  (:method ((game game) (name string))
-   (setf (gethash name (players game))
-         (make-instance 'player :name name :game game))))
-
 (defgeneric shuffle-territories (game)
   (:method ((game game))
    (let ((territory-count (size (territories game)))
-         (player-count (size (players game))))
+         (player-count (size (%players game))))
      (when (= territory-count 0)
        (error "El juego debe tener territorios"))
      (when (= player-count 0)
@@ -284,7 +282,7 @@
        (setf (%owner (territory game territory)) player)
        (setf (%armies (territory game territory)) 1)))))
 
-(defgeneric claim (game territory)
+(defgeneric %claim (game territory)
   (:method ((game game) territory-key)
    (let ((territory (territory game territory-key)))
      (when (owner territory)
@@ -292,12 +290,12 @@
      (setf (%owner territory) (turn-player game))
      (setf (%armies territory) 1))))
 
-(defgeneric reset-movable-armies (game)
+(defgeneric %reset-movable-armies (game)
   (:method ((game game))
    (loop for territory being the hash-values in (territories game) do
          (setf (%movable-armies territory) (armies territory)))))
 
-(defgeneric move-armies (game from to amount)
+(defgeneric %move-armies (game from to amount)
   (:method ((game game) origin-key destination-key amount)
    (let ((origin (territory game origin-key))
          (destination (territory game destination-key)))
@@ -315,7 +313,7 @@
      (decf (%armies origin) amount)
      (incf (%armies destination) amount))))
 
-(defgeneric place-armies (game where amount)
+(defgeneric %place-armies (game where amount)
   (:method ((game game) territory-key (amount integer))
    (let ((territory (territory game territory-key)))
      (unless (eq (owner territory) (turn-player game))
@@ -327,7 +325,7 @@
      (decf (%pending-armies game) amount)
      (incf (%armies territory) amount))))
 
-(defgeneric attack (game from to)
+(defgeneric %attack (game from to)
   (:method ((game game) origin-key destination-key)
    (symbol-macrolet
      ((origin (territory game origin-key))
@@ -347,14 +345,14 @@
        (decf defenders (random decrement))
        (when (= defenders 0)
          (setf (%owner destination) (owner origin))
-         (move-armies game origin-key destination-key 1)))
+         (%move-armies game origin-key destination-key 1)))
      (eq (owner origin) (owner destination)))))
 
 (defmethod print-object ((game game) stream)
   (format stream "~&Jugadores:~t~{~a~^, ~}"
-          (loop repeat (size (players game))
+          (loop repeat (size (%players game))
                 for p in (%players-round game)
-                for n = (name p)
+                for n = (player-name p)
                 collecting (if (equal p (turn-player game))
                              (format nil "-~a-" n)
                              n)))
@@ -365,7 +363,7 @@
   (loop for v being the hash-values in (territories game)
         using (hash-key k) do
         (format stream "~& ~a~23t~a~37tDueño: ~a~55tEjércitos: ~a"
-                (name v) k
-                (if (owner v) (name (owner v)) "-")
+                (territory-name v) k
+                (if (owner v) (player-name (owner v)) "-")
                 (if (armies v) (armies v) "-"))))
 

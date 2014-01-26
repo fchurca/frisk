@@ -17,7 +17,8 @@
     :player
     :game
     ; Accessors
-    :name
+    :player-name
+    :territory-name
     :extra-armies
     :owner
     :armies
