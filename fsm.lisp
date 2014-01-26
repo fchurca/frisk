@@ -10,7 +10,7 @@
      bar (
           qux ((fsm string)
                (print string)
-               (switch fsm 'foo))
+               (_switch 'foo))
           quux ((fsm)
                 t)))
     foo))
@@ -37,23 +37,32 @@
    (state :initform nil :reader state :initarg :state)))
 
 (defmacro make-fsm (states initial-state)
-  `(make-instance
-     'fsm :states
-     (list
-       ,@(loop for (name spec) on states by #'cddr appending
-               `(',name
-                 (list
-                   ,@(loop for (message spec) on spec by #'cddr appending
-                           `(',message
-                             ,(if (listp spec)
-                                (destructuring-bind
-                                  ((&whole params fsm &rest rest) &body body) spec
-                                  (declare (ignore rest))
-                                  `(lambda ,params
-                                     (declare (ignorable ,fsm))
-                                     ,@body))
-                                `',spec)))))))
-     :state ',initial-state))
+  (let ((fsm-name (gensym)))
+    `(bind
+       ((,fsm-name nil) 
+        ((:flet _switch (state)) (switch ,fsm-name state)))
+       (setf
+         ,fsm-name
+         (make-instance
+           'fsm :states
+           (list
+             ,@(loop
+                 for (name spec) on states by #'cddr appending
+                 `(',name
+                   (list
+                     ,@(loop
+                         for (message spec) on spec by #'cddr appending
+                         `(',message
+                           ,(if (listp spec)
+                              (destructuring-bind
+                                ((&whole params fsm &rest rest) &body body)
+                                spec
+                                (declare (ignore rest))
+                                `(lambda ,params
+                                   (declare (ignorable ,fsm))
+                                   ,@body))
+                              `',spec)))))))
+           :state ',initial-state)))))
 
 (defgeneric switch (fsm state)
   (:method ((fsm fsm) state)

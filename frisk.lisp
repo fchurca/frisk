@@ -36,7 +36,6 @@
             (the-turn-player %turn-player)
             (the-fsm game-fsm)
             (the-pending-armies %pending-armies)) game)
-          ((:flet _switch (state)) (switch the-fsm state))
           ((:flet _rotate-turn ()) (%rotate-turn game))
           ((:flet _reset-movable-armies ()) (%reset-movable-armies game))
           ((:flet _place-armies (where amount))
