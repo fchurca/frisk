@@ -203,24 +203,6 @@
   (:method ((game game))
    (car (%turn-player game))))
 
-(defgeneric %pass-head (game)
-  (:method ((game game))
-   (pop (%players-round game))
-   (head-player game)))
-
-(defgeneric %rotate-turn (game)
-  (:method ((game game))
-   (pop (%turn-player game))
-   (eq (turn-player game) (head-player game))))
-
-(defgeneric %pass-turn (game)
-  (:method ((game game))
-   (let ((is-head-player (%rotate-turn game)))
-     (when is-head-player
-       (%pass-head game)
-       (%rotate-turn game))
-     is-head-player)))
-
 (defmethod initial-armies ((game game))
   (cadr (assoc (length (player-keys game))
                (initial-armies (game-map game)))))
@@ -301,6 +283,24 @@
        for territory in territories do
        (setf (%owner (territory game territory)) player)
        (setf (%armies (territory game territory)) 1)))))
+
+(defgeneric %pass-head (game)
+  (:method ((game game))
+   (pop (%players-round game))
+   (head-player game)))
+
+(defgeneric %rotate-turn (game)
+  (:method ((game game))
+   (pop (%turn-player game))
+   (eq (turn-player game) (head-player game))))
+
+(defgeneric %pass-turn (game)
+  (:method ((game game))
+   (let ((is-head-player (%rotate-turn game)))
+     (when is-head-player
+       (%pass-head game)
+       (%rotate-turn game))
+     is-head-player)))
 
 (defgeneric %claim (game territory)
   (:method ((game game) territory-key)
