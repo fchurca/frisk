@@ -72,7 +72,7 @@
                         (if (every (lambda (k) (owner (territory game k)))
                                    (territory-keys game))
                           (switch fsm :setup))))
-               :setup
+                :setup
                 (:done ((fsm)
                         (setf the-pending-armies (2-initial-armies))
                         (switch fsm :placing-twice-n)))
@@ -94,15 +94,16 @@
                  :done ((fsm)
                         (switch fsm :regrouping)))
                 :regrouping
-                (:move ((fsm from to amount)
-                        (%move-armies game from to amount))
+                (:move-armies ((fsm from to amount)
+                               (%move-armies game from to amount))
                  :done ((fsm)
                         (switch fsm
-                          (if (%pass-turn game)
-                            (progn
-                              (setf the-pending-armies (placeable-armies))
-                              :placing)
-                            :attacking))))
+                                (if (%pass-turn game)
+                                  (progn
+                                    (setf the-pending-armies
+                                          (placeable-armies))
+                                    :placing)
+                                  :attacking))))
                 :placing
                 (:place ((fsm where amount)
                          (%place-armies game where amount))
@@ -130,8 +131,8 @@
                (make-instance 'territory
                               :territory-name name
                               :extra-armies extra-armies))
-         (dolist (frontierkey terr-frontiers)
-           (add-edge-between-vertexes frontiers key frontierkey))))
+         (dolist (frontier-key terr-frontiers)
+           (add-edge-between-vertexes frontiers key frontier-key))))
      (make-instance 'game-map
                     :territories territories
                     :frontiers frontiers
@@ -282,7 +283,7 @@
   (send game :attack from to))
 
 (defmethod move-armies ((game game) from to amount)
-  (send game :move from to amount))
+  (send game :move-armies from to amount))
 
 (defgeneric shuffle-territories (game)
   (:method ((game game))
