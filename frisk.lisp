@@ -175,7 +175,13 @@
          (loop until (eq (turn-player game) turn-player)
                do (%rotate-turn game)))
        (when pending-armies (setf (%pending-armies game) pending-armies)))
-     ; todo: signal error on uninitialized territories if playing
+     (unless (or (eq (state game) :claiming)
+                 (every (lambda (territory-key)
+                          (let ((territory (territory game territory-key)))
+                            (and (owner territory)
+                                 (plusp (armies territory)))))
+                        (territory-keys game)))
+       (error "Hay territorios sin inicializar"))
      game))
 
   (:method ((file stream))
