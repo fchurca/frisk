@@ -161,7 +161,7 @@
                                :game-map (read-map game-map)
                                :players players))
           (turn-player (player game turn)))
-     (loop for (name armies-dist) on armies by #'cddr do
+     (doplist (name armies-dist armies)
            (loop for (territory-key armies) on armies-dist by #'cddr
                  for territory = (territory game territory-key) do
                  (setf (%owner territory) (player game name))

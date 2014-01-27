@@ -4,7 +4,7 @@
         :cl-containers
         :metabang-bind)
   (:import-from :metatilities :defclass*)
-  (:import-from :alexandria :shuffle :hash-table-keys)
+  (:import-from :alexandria :shuffle :hash-table-keys :doplist)
   (:export
     ; FSM
     :fsm
