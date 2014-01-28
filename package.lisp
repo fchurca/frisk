@@ -2,17 +2,11 @@
   (:use :common-lisp
         :cl-graph
         :cl-containers
-        :metabang-bind)
+        :metabang-bind
+        :ar.com.fchurca.fsm)
   (:import-from :metatilities :defclass*)
   (:import-from :alexandria :shuffle :hash-table-keys :doplist)
   (:export
-    ; FSM
-    :fsm
-    :make-fsm
-    :switch
-    :states
-    :available-messages
-    :send
     ; Classes
     :territory
     :game-map
@@ -28,6 +22,7 @@
     :frontiers
     :players
     ; Functions and methods and such, oh my!
+    :send
     :read-map
     :read-game
     :claim

@@ -6,8 +6,8 @@
   :license "BSD"
   :description "Implementation of a Risk-like board game"
   :long-description ""
-  :components ((:file "package")
-               (:file "fsm" :depends-on ("package")) 
-               (:file "frisk" :depends-on ("package" "fsm")))
-  :depends-on (:alexandria :cl-graph :metatilities-base))
+  :components ((:file "fsm") 
+               (:file "package" :depends-on ("fsm"))
+               (:file "frisk" :depends-on ("package")))
+  :depends-on (:alexandria :cl-graph :metatilities-base :iterate))
 

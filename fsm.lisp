@@ -1,4 +1,18 @@
-(in-package :ar.com.fchurca.frisk)
+(defpackage :ar.com.fchurca.fsm
+  (:use :common-lisp
+        :metabang-bind
+        :iterate)
+  (:import-from :metatilities :defclass*)
+  (:import-from :alexandria :doplist)
+  (:export
+    :fsm
+    :make-fsm
+    :switch
+    :states
+    :available-messages
+    :send))
+
+(in-package :ar.com.fchurca.fsm)
 
 #|
 (defparameter *fsm*
@@ -32,12 +46,27 @@
 ;FOO
 |#
 
-(defclass fsm ()
-  ((states :initform nil :initarg :states)
-   (state :initform nil :reader state :initarg :state)))
+(defmacro-clause (FOR spec ON-PLIST plist)
+  "The (key value)s of a property list"
+  `(for (,(car spec) ,(cadr spec)) on ,plist by #'cddr))
+
+(defclass* fsm ()
+  ((states nil i)
+   (state  nil ir)))
 
 (defmacro make-fsm (states initial-state)
-  (let ((fsm-name (gensym)))
+  (bind ((fsm-name (gensym))
+         ((:flet message-spec->plist (spec))
+          (if (listp spec)
+            (destructuring-bind ((&whole params fsm &rest rest) &body body) spec
+              (declare (ignore rest))
+              `(lambda ,params
+                 (declare (ignorable ,fsm))
+                 ,@body))
+            `',spec))
+         ((:flet state-spec->plist (spec))
+          `(list ,@(iter (for (message m-spec) on-plist spec)
+                         (appending `(',message ,(message-spec->plist m-spec)))))))
     `(bind
        ((,fsm-name nil) 
         ((:flet _switch (state)) (switch ,fsm-name state)))
@@ -45,23 +74,8 @@
          ,fsm-name
          (make-instance
            'fsm :states
-           (list
-             ,@(loop
-                 for (name spec) on states by #'cddr appending
-                 `(',name
-                   (list
-                     ,@(loop
-                         for (message spec) on spec by #'cddr appending
-                         `(',message
-                           ,(if (listp spec)
-                              (destructuring-bind
-                                ((&whole params fsm &rest rest) &body body)
-                                spec
-                                (declare (ignore rest))
-                                `(lambda ,params
-                                   (declare (ignorable ,fsm))
-                                   ,@body))
-                              `',spec)))))))
+           (list ,@(iter (for (name spec) on-plist states)
+                         (appending `(',name ,(state-spec->plist spec)))))
            :state ',initial-state)))))
 
 (defgeneric switch (fsm state)
