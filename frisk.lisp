@@ -217,6 +217,12 @@
 (defmethod territories ((game game))
   (territories (game-map game)))
 
+(defgeneric mapterritories (function-designator game)
+  (:method (function-designator (game-map game-map))
+   (maphash function-designator (territories game-map))) 
+  (:method (function-designator (game game))
+   (mapterritories function-designator (game-map game))))
+
 (defmethod frontiers ((game game))
   (frontiers (game-map game)))
 
@@ -387,10 +393,10 @@
   (if (pending-armies game)
     (format stream "~&Ejércitos pendientes:~t~a" (pending-armies game)))
   (format stream "~&Territorios:")
-  (loop for v being the hash-values in (territories game)
-        using (hash-key k) do
-        (format stream "~& ~a~23t~a~37tDueño: ~a~55tEjércitos: ~a"
-                (territory-name v) k
-                (if (owner v) (player-name (owner v)) "-")
-                (if (armies v) (armies v) "-"))))
+  (mapterritories (lambda (k v)
+                    (format stream "~& ~a~23t~a~37tDueño: ~a~55tEjércitos: ~a"
+                            (territory-name v) k
+                            (if (owner v) (player-name (owner v)) "-")
+                            (if (armies v) (armies v) "-")))
+                  game))
 

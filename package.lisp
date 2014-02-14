@@ -21,6 +21,7 @@
     :territories
     :frontiers
     :players
+    :state
     ; Functions and methods and such, oh my!
     :send
     :read-map

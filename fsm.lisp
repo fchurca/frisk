@@ -9,6 +9,7 @@
     :make-fsm
     :switch
     :states
+    :state
     :available-messages
     :send))
 
